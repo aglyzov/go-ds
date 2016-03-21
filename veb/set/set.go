@@ -65,13 +65,14 @@ func (t *Set) Add(val uint64) (add bool) {
 	node  := t.root
 
 	//fmt.Println("------------------")
+	//fmt.Printf("value: %#x\n", val)
 
 	for i := 0; ; i++ {
 		idx := byte((val >> shift) & 0xFF)
 		ofs := idx >> 6
+		//fmt.Printf("node:%v, ofs:%v, idx:%v\n", node, ofs, idx)
 		bmp := node.bitmap[ofs]
 		idx  = idx & 0x3F  // the lowest 6 bits (2**6 == 64)
-		//fmt.Printf("ofs:%v, bmp:%0x, idx:%v\n", ofs, bmp, idx)
 		add = false
 		if (bmp >> idx) & 0x01 == 0 {
 			node.bitmap[ofs] = bmp | (1 << idx)
@@ -91,7 +92,7 @@ func (t *Set) Add(val uint64) (add bool) {
 			num  := len(node.children)
 			node.children = append(node.children, nil)
 			if num > 0 {
-				copy(node.children[cnt:num], node.children[cnt+1:])
+				copy(node.children[cnt+1:], node.children[cnt:num])
 			}
 			next := &Node{}
 			node.children[cnt] = next
