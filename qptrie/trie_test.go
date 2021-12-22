@@ -94,6 +94,8 @@ func TestSet_Get(t *testing.T) {
 		{"abcde", 7}, // replace
 		{"abcde\x00", 8},
 		{"", 9}, // replace
+		{"Абвгд", 10},
+		{"Абвгдеё", 11},
 	} {
 		var (
 			tcase = tcase

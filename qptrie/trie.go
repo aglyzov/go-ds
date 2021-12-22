@@ -175,9 +175,8 @@ func (qp *Trie) Set(key string, val interface{}) (interface{}, bool) {
 	cur.bitpack = 0 // reset
 
 	var (
-		chainBits  = num*byteWidth - shift
-		chainBytes = chainBits / byteWidth
-		chainLen   = chainBits / nibbleWidth
+		chainBits = num*byteWidth - shift
+		chainLen  = chainBits / nibbleWidth
 	)
 
 	for i := 0; i < chainLen; i++ {
@@ -193,8 +192,9 @@ func (qp *Trie) Set(key string, val interface{}) (interface{}, bool) {
 
 	// and end the node chain with two leaves
 	var (
+		keyLenDiff         = keyLen - len(key)
 		nib1, key1, shift1 = getNibble(key, shift)
-		nib2, key2, shift2 = getNibble(kv.Key[chainBytes:], shift)
+		nib2, key2, shift2 = getNibble(kv.Key[keyLenDiff:], shift)
 	)
 
 	if nib1 == nib2 {
