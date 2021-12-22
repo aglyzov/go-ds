@@ -1,13 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
 
-import "analyzers/lib/critbit/dict"
-
+	"github.com/aglyzov/go-ds/critbit/dict"
+)
 
 func main() {
 	d := dict.NewDict()
-	d.Set([]byte("c"),  1)
+	d.Set([]byte("c"), 1)
 	//d.Set([]byte("a"),  2)
 	d.Set([]byte("a1"), 3)
 	d.Set([]byte("a2"), 4)
@@ -17,10 +18,11 @@ func main() {
 
 	d.DebugDump()
 
-	var a, b  *dict.RefPath
+	var a, b *dict.RefPath
 
 	//a,b = d.FindPathRange([]byte(""));		fmt.Printf("R()     -> %v .. %v\n", a, b)
-	a,b  = d.FindPathRange([]byte("a"));	fmt.Printf("R(a)    -> %v .. %v\n", a, b)
+	a, b = d.FindPathRange([]byte("a"))
+	fmt.Printf("R(a)    -> %v .. %v\n", a, b)
 
 	if a != nil {
 		cur, end := a.GetLeaf(), b.GetLeaf()
@@ -59,4 +61,3 @@ func main() {
 	//fmt.Printf("LE(b1)  -> %v\n", d.FindPathLE([]byte("b1")))
 	//fmt.Printf("LE(bbb) -> %v\n", d.FindPathLE([]byte("bbb")))
 }
-
