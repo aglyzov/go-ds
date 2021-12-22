@@ -76,20 +76,23 @@ func TestSet_IsLeaf(t *testing.T) {
 func TestSet_Get(t *testing.T) {
 	t.Parallel()
 
-	qp := New()
+	var (
+		qp    = New()
+		state = map[string]interface{}{}
+	)
 
 	for _, tcase := range []*struct {
-		Key    string
-		Val    interface{}
+		Key string
+		Val interface{}
 	}{
 		{"", 1},
 		{"\x00", 2},
 		{"\x00\x00\x00", 3},
-		{"abc", 4},
-		{"ABC", 5},
+		{"abcde", 4},
+		{"abcdE", 5},
 		{"ab", 6},
-		{"abc.", 7},
-		{"abc\x00", 8},
+		{"abcde", 7}, // replace
+		{"abcde\x00", 8},
 		{"", 9}, // replace
 	} {
 		var (
@@ -99,25 +102,17 @@ func TestSet_Get(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			qp.Set(tcase.Key, tcase.Val)
-			val, ok := qp.Get(tcase.Key)
+			state[tcase.Key] = tcase.Val
 
-			assert.Equal(t, tcase.Val, val)
-			assert.True(t, ok)
+			// Get all the keys we set so far
+			for key, val := range state {
+				actual, ok := qp.Get(key)
+
+				assert.Equal(t, val, actual, key)
+				assert.True(t, ok)
+			}
 		})
 	}
-	assert.False(t, qp.isLeaf())
-
-	qp.Set("", 123) // add a key-value pair
-
-	assert.True(t, qp.isLeaf())
-
-	qp.Set("abc", 345) // replace the value
-
-	assert.True(t, qp.isLeaf())
-
-	qp.Set("edf", 567) // add a key-value pair
-
-	assert.False(t, qp.isLeaf())
 }
 
 func TestGetNibble(t *testing.T) {
@@ -130,8 +125,8 @@ func TestGetNibble(t *testing.T) {
 		ExpKey   string
 		ExpShift int
 	}{
-		{"", 0, 0x00, "", 0},
-		{"", 7, 0x00, "", 0},
+		{"", 0, bitmapWidth - 1, "", 0},
+		{"", 7, bitmapWidth - 1, "", 0},
 		{"01010101", 0, 0b01010, "01010101", 5},
 		{"01010101", 1, 0b10101, "01010101", 6},
 		{"01010101", 2, 0b01010, "01010101", 7},
