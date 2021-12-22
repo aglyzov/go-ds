@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/brianvoe/gofakeit/v6"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -96,6 +98,8 @@ func TestSet_Get(t *testing.T) {
 		{"", 9}, // replace
 		{"Абвгд", 10},
 		{"Абвгдеё", 11},
+		{"Banjo lo-fi brooklyn mlkshk cliche.", 12},
+		{"Banjo lomo DIY whatever street.", 13},
 	} {
 		var (
 			tcase = tcase
@@ -114,6 +118,41 @@ func TestSet_Get(t *testing.T) {
 				assert.True(t, ok)
 			}
 		})
+	}
+}
+
+func TestSet_FakeData(t *testing.T) {
+	t.Parallel()
+
+	const (
+		total       = 1_000_000
+		seed        = 1234567890
+		wordsPerKey = 5
+	)
+
+	var (
+		qp    = New()
+		state = map[string]interface{}{}
+		fake  = gofakeit.New(seed)
+	)
+
+	// Set fake data
+	for i := 0; i < total; i++ {
+		var (
+			key = fake.HipsterSentence(wordsPerKey)
+			val = fake.Name()
+		)
+
+		qp.Set(key, val)
+		state[key] = val
+	}
+
+	// Get all the keys we set
+	for key, val := range state {
+		actual, ok := qp.Get(key)
+
+		assert.Equal(t, val, actual, key)
+		assert.True(t, ok)
 	}
 }
 

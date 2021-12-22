@@ -1,3 +1,7 @@
+github.com/brianvoe/gofakeit v3.18.0+incompatible h1:wDOmHc9DLG4nRjUVVaxA+CEglKOW72Y5+4WNxUIkjM8=
+github.com/brianvoe/gofakeit v3.18.0+incompatible/go.mod h1:kfwdRA90vvNhPutZWfH7WPaDzUjz+CZFqG+rPkOjGOc=
+github.com/brianvoe/gofakeit/v6 v6.10.0 h1:0lZpqKzY2xVfjmCQBn9g9+SHIGg58SX+vu/ejuSVGMc=
+github.com/brianvoe/gofakeit/v6 v6.10.0/go.mod h1:palrJUk4Fyw38zIFB/uBZqsgzW5VsNllhHKKwAebzew=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/hideo55/go-popcount v0.0.0-20170530181440-863800c130e8 h1:I1wTouiryMD1bAsf2hOknueKpABvdpyBFXX4TEc4OYI=

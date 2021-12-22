@@ -197,7 +197,7 @@ func (qp *Trie) Set(key string, val interface{}) (interface{}, bool) {
 		nib2, key2, shift2 = getNibble(kv.Key[keyLenDiff:], shift)
 	)
 
-	if nib1 == nib2 {
+	for nib1 == nib2 {
 		// the last nibble of the shortest key is the same in both keys - add another node
 		node := &Trie{
 			bitpack: uint64(shift1) << nibShiftOffset,
