@@ -6,24 +6,37 @@ import (
 )
 
 const (
-	leafBitOffset    = 63 // most significant bit in an uint64
-	nibShiftOffset   = 60
-	embKeyBitOffset  = 59
-	embKeySizeOffset = 56
-	bitmapOffset     = 0
+	// common bit fields
+	leafBitOffset    = 63 // 1-bit flag:   1 - leaf, 0 - node
+	nibShiftOffset   = 59 // 3-bit number: current nibble's shift in a byte
+	embKeySizeOffset = 56 // 3-bit number: number of embedded key bytes [1..7]
 
 	nibShiftWidth   = 3
 	embKeySizeWidth = 3
-	bitmapWidth     = 33
 
+	nibShiftMax   = (1 << nibShiftWidth) - 1   // 0b_111 == 7
+	embKeySizeMax = (1 << embKeySizeWidth) - 1 // 0b_111 == 7
+
+	leafBitMask    uint64 = 1 << leafBitOffset                // 0b_100000000..0
+	nibShiftMask   uint64 = nibShiftMax << nibShiftOffset     // 0b_001110000..0
+	embKeyBitMask  uint64 = 1 << embKeyBitOffset              // 0b_010000000..0
+	embKeySizeMask uint64 = embKeySizeMax << embKeySizeOffset // 0b_000001110..0
+
+	// leaf specific bit fields
+	embKeyBitOffset = 62 // 1-bit flag:   key tail  1 - embedded, 0 - stored in pointer (*KV)
+
+	// node specific bit fields
+	cutBitOffset = 62 // 1-bit flag:  1 - cut-node, 0 - fan-node
+	bitmapOffset = 0  // 33-bit map:  1 - corresponding child twig is available
+
+	bitmapWidth = 33
+
+	cutBitMask uint64 = 1 << cutBitOffset                        // 0b_010000000..0
+	bitmapMask uint64 = ((1 << bitmapWidth) - 1) << bitmapOffset // 0b_0..000111..1
+
+	// other
 	byteWidth   = 8
 	nibbleWidth = 5
-
-	leafBitMask    uint64 = 1 << leafBitOffset                               // 0b_100000000..0
-	nibShiftMask   uint64 = ((1 << nibShiftWidth) - 1) << nibShiftOffset     // 0b_011100000..0
-	embKeyBitMask  uint64 = 1 << embKeyBitOffset                             // 0b_000010000..0
-	embKeySizeMask uint64 = ((1 << embKeySizeWidth) - 1) << embKeySizeOffset // 0b_000001110..0
-	bitmapMask     uint64 = ((1 << bitmapWidth) - 1) << bitmapOffset         // 0b_0..0111..1
 
 	nibbleMask byte = (1 << nibbleWidth) - 1
 )
@@ -35,6 +48,34 @@ type KV struct {
 	Val interface{}
 }
 
+// Trie is a twig of a QP-Trie (meaning either a node or a leaf).
+//
+// Each twig has two fields:
+//
+//  - bitpack - 64-bit packed settings of the twig (structure depends on a twig type);
+//  - pointer - an unsafe.Pointer to either a leaf value or an array of node children.
+//
+// Bitpack structure variants:
+//
+//                    [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    56:55-00     ]
+//  - regular-leaf:   <1:leaf> <0:reg> <NNN:shift> ---------------------------------
+//  - emb-tail-leaf:  <1:leaf> <1:emb> <NNN:shift> <NNN:emb-len> <KKK...KKK:emb-key>
+//
+//                    [ 1:63 ] [ 1:62] [ 3:61-59 ] [ 26:58-33  ] [    33:32-00     ]
+//  - fan-node:       <0:node> <0:fan> <NNN:shift> ------------- <BBB...BBB:nib-map>
+//
+//                    [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    56:55-00     ]
+//  - reg-cut-node:   <0:node> <1:cut> <NNN:shift> <000:not-emb> -------------------
+//  - emb-cut-node:   <0:node> <1:cut> <NNN:shift> <NNN:emb-len> [KKK...KKK:emb-key]
+//
+// Pointer variants:
+//
+//  - regular-leaf:   unsafe.Pointer( &KV{Key:"tail", Val:<value:interface{}>} )
+//  - emb-tail-leaf:  unsafe.Pointer( &<value:interface{}> )
+//  - fan-node:       unsafe.Pointer( <twigs:*[N]Trie> )
+//  - reg-cut-node:   unsafe.Pointer( &KV{Key:"tail", Val:(interface{})(<twig:*Trie>)} )
+//  - emb-cut-node:   unsafe.Pointer( <twig:*Trie>} )
+//
 type Trie struct {
 	bitpack uint64
 	pointer unsafe.Pointer // should always point at something allocated!
@@ -60,7 +101,7 @@ func (qp *Trie) Get(key string) (interface{}, bool) {
 		nib   byte
 	)
 
-	for !cur.isLeaf() {
+	for cur.bitpack&leafBitMask == 0 {
 		var bitmap = cur.bitpack & bitmapMask >> bitmapOffset
 
 		if bitmap == 0 {
@@ -101,7 +142,7 @@ func (qp *Trie) Set(key string, val interface{}) (interface{}, bool) {
 		nib   byte
 	)
 
-	for !cur.isLeaf() {
+	for cur.bitpack&leafBitMask == 0 {
 		var bitmap = cur.bitpack & bitmapMask >> bitmapOffset
 
 		if bitmap == 0 {
@@ -236,26 +277,26 @@ func (qp *Trie) isLeaf() bool {
 }
 
 func getLeafKV(leaf *Trie) KV {
-	var kv KV
-
-	if leaf.bitpack&embKeyBitMask != 0 {
-		// key is embedded into the bitmap
-		var (
-			data [8]byte
-			size = leaf.bitpack & embKeySizeMask >> embKeySizeOffset
-		)
-
-		for i := uint64(0); i < size; i++ {
-			data[i] = byte(leaf.bitpack >> (8 * i))
-		}
-
-		kv.Key = string(data[:size])
-		kv.Val = *(*interface{})(leaf.pointer)
-	} else {
-		kv = *(*KV)(leaf.pointer)
+	if leaf.bitpack&embKeyBitMask == 0 {
+		return *(*KV)(leaf.pointer) // regular leaf
 	}
 
-	return kv
+	return KV{
+		Key: extractKey(leaf.bitpack),
+		Val: *(*interface{})(leaf.pointer),
+	}
+}
+
+func getNodeCut(node *Trie) string {
+	if node.bitpack&cutBitMask == 0 {
+		return "" // fan-node doesn't store a key cut
+	}
+
+	if node.bitpack&embKeySizeMask == 0 {
+		return (*KV)(node.pointer).Key // regular cut-node
+	}
+
+	return extractKey(node.bitpack)
 }
 
 func getNibble(key string, shift int) (byte, string, int) {
@@ -287,23 +328,69 @@ func getNibble(key string, shift int) (byte, string, int) {
 
 func newLeaf(key string, shift int, val interface{}) *Trie {
 	var leaf = Trie{
-		bitpack: leafBitMask,
+		bitpack: leafBitMask | uint64(shift)<<nibShiftOffset,
 		pointer: unsetPointer,
 	}
 
-	if n := len(key); n <= 7 {
-		// embed the key into the bitmap
-		leaf.bitpack |= uint64(shift)<<nibShiftOffset |
-			embKeyBitMask | uint64(n)<<embKeySizeOffset
-
-		for i := 0; i < n; i++ {
-			leaf.bitpack |= uint64(key[i]) << (8 * i)
-		}
-
+	if len(key) <= embKeySizeMax {
+		leaf.bitpack |= embedKey(key)
 		leaf.pointer = unsafe.Pointer(&val)
 	} else {
 		leaf.pointer = unsafe.Pointer(&KV{key, val})
 	}
 
 	return &leaf
+}
+
+func newCutNode(cut string, shift int, twig *Trie) *Trie {
+	var node = Trie{
+		bitpack: uint64(shift) << nibShiftOffset,
+		pointer: unsetPointer,
+	}
+
+	if len(cut) <= embKeySizeMax {
+		// embed the key into the bitmap
+		node.bitpack |= embedKey(cut)
+		node.pointer = unsafe.Pointer(twig)
+	} else {
+		node.pointer = unsafe.Pointer(&KV{cut, twig})
+	}
+
+	return &node
+}
+
+// embedKey embeds a short key into a bitpack.
+//
+func embedKey(key string) uint64 {
+	var size = byte(len(key))
+
+	if size > embKeySizeMax {
+		size = embKeySizeMax
+	}
+
+	// NOTE: we rely on embKeyBitMask == cutBitMask here because
+	//       embedKey() is used in both newLeaf() and newCutNode()
+	//
+	var bitpack = embKeyBitMask | uint64(size) << embKeySizeOffset
+
+	for i := byte(0); i < size; i++ {
+		bitpack |= uint64(key[i]) << (byteWidth * i)
+	}
+
+	return bitpack
+}
+
+// extractKey extracts an embedded key from a bitpack.
+//
+func extractKey(bitpack uint64) string {
+	var (
+		size = byte(bitpack & embKeySizeMask >> embKeySizeOffset)
+		data [embKeySizeMax]byte
+	)
+
+	for i := byte(0); i < size; i++ {
+		data[i] = byte(bitpack >> (byteWidth * i))
+	}
+
+	return string(data[:size])
 }
