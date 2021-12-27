@@ -6,14 +6,13 @@ package dict
 
 import (
 	"os"
+	"reflect"
 	"sort"
 	"testing"
 	"text/scanner"
-)
+	"unsafe"
 
-import (
-    "reflect"
-    "unsafe"
+	"github.com/brianvoe/gofakeit/v6"
 )
 
 func BytesToString(b []byte) string {
@@ -113,6 +112,36 @@ func BenchmarkMapSort(b *testing.B) {
 	}
 }
 
+func BenchmarkGoMap_Set(b *testing.B) {
+	var (
+		keys = getKeys(b.N)
+		m    = make(map[string]interface{})
+	)
+
+	b.ResetTimer()
+
+	for i, key := range keys {
+		m[key] = i
+	}
+}
+
+func BenchmarkGoMap_Get(b *testing.B) {
+	var (
+		keys = getKeys(b.N)
+		m    = make(map[string]interface{})
+	)
+
+	for i, key := range keys {
+		m[key] = i
+	}
+
+	b.ResetTimer()
+
+	for _, key := range keys {
+		_ = m[key]
+	}
+}
+
 func BenchmarkTreeSort(b *testing.B) {
 	initdata(b)
 	b.ResetTimer()
@@ -127,4 +156,49 @@ func BenchmarkTreeSort(b *testing.B) {
 			return true
 		})
 	}
+}
+
+func BenchmarkDict_Set(b *testing.B) {
+	var (
+		keys = getKeys(b.N)
+		dict = NewDict()
+	)
+
+	b.ResetTimer()
+
+	for i, key := range keys {
+		dict.Set(StringToBytes(key), i)
+	}
+}
+
+func BenchmarkDict_Get(b *testing.B) {
+	var (
+		keys = getKeys(b.N)
+		dict = NewDict()
+	)
+
+	for i, key := range keys {
+		dict.Set(StringToBytes(key), i)
+	}
+
+	b.ResetTimer()
+
+	for _, key := range keys {
+		_, _ = dict.Get(StringToBytes(key))
+	}
+}
+
+func getKeys(total int) []string {
+	const seed = 1234567890
+
+	var (
+		faker = gofakeit.New(seed)
+		keys  = make([]string, total)
+	)
+
+	for i := range keys {
+		keys[i] = faker.Sentence(4)
+	}
+
+	return keys
 }

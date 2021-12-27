@@ -88,7 +88,7 @@ func Test_KeyOrder(t *testing.T) {
 func Test_DeleteUnknownKey(t *testing.T) {
 	tr := NewDict()
 	if c := tr.Set([]byte("aa"), 2); c != nil {
-		t.Error("wrong result when setting into an empty tree: %v", c)
+		t.Errorf("wrong result when setting into an empty tree: %v", c)
 	}
 	if c := tr.Del([]byte("ab")); c != nil {
 		t.Errorf("wrong result when deleting an unknown key: %v", c)
