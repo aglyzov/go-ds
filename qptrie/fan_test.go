@@ -52,6 +52,15 @@ func TestAddToFanNode_NoPrefix_Nibble5_Shift0(t *testing.T) {
 	)
 
 	assert.Equal(t, expected, actual)
+
+	// check if both keys lead to the respective values
+	twig1, _, ok := node.findClosest(key1)
+	assert.True(t, twig1.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
+
+	twig2, _, ok := node.findClosest(key2)
+	assert.True(t, twig2.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
 }
 
 func TestAddToFanNode_NoPrefix_Nibble5_Shift5(t *testing.T) {
@@ -99,6 +108,15 @@ func TestAddToFanNode_NoPrefix_Nibble5_Shift5(t *testing.T) {
 	)
 
 	assert.Equal(t, expected, actual)
+
+	// check if both keys lead to the respective values
+	twig1, _, ok := node.findClosest(key1)
+	assert.True(t, twig1.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
+
+	twig2, _, ok := node.findClosest(key2)
+	assert.True(t, twig2.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
 }
 
 func TestAddToFanNode_MatchedPrefix3_Nibble4_Shift0(t *testing.T) {
@@ -147,6 +165,15 @@ func TestAddToFanNode_MatchedPrefix3_Nibble4_Shift0(t *testing.T) {
 	)
 
 	assert.Equal(t, expected, actual)
+
+	// check if both keys lead to the respective values
+	twig1, _, ok := node.findClosest(key1)
+	assert.True(t, twig1.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
+
+	twig2, _, ok := node.findClosest(key2)
+	assert.True(t, twig2.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
 }
 
 func TestAddToFanNode_MatchedPrefix4_Nibble3_Shift4(t *testing.T) {
@@ -196,6 +223,15 @@ func TestAddToFanNode_MatchedPrefix4_Nibble3_Shift4(t *testing.T) {
 	)
 
 	assert.Equal(t, expected, actual)
+
+	// check if both keys lead to the respective values
+	twig1, _, ok := node.findClosest(key1)
+	assert.True(t, twig1.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
+
+	twig2, _, ok := node.findClosest(key2)
+	assert.True(t, twig2.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
 }
 
 func TestAddToFanNode_UnmatchedPrefix3_Nibble4_Shift0(t *testing.T) {
@@ -217,8 +253,8 @@ func TestAddToFanNode_UnmatchedPrefix3_Nibble4_Shift0(t *testing.T) {
 	node.pointer = unsafe.Pointer(newLeaf("", 0, "empty"))
 
 	var (
-		key1, _ = bitStringToString("011_00111_10001000")
-		key2, _ = bitStringToString("001_10110")
+		key1, _ = bitStringToString("011_0011_1_10001000")
+		key2, _ = bitStringToString("001_1011_0")
 	)
 
 	require.Zero(t, node.bitpack&leafBitMask, "should be a fan-node, not leaf")
@@ -239,11 +275,20 @@ func TestAddToFanNode_UnmatchedPrefix3_Nibble4_Shift0(t *testing.T) {
 	require.Equal(t, 3, actNibSize)
 
 	var (
-		expected = (uint64(1) << 0b100) // just key2 here, key1 & emptyBit are in the child fan-node
+		expected = (uint64(1) << 0b110) | (uint64(1) << 0b100)
 		actual   = node.bitpack & actBitmapMask
 	)
 
 	assert.Equal(t, expected, actual)
+
+	// check if both keys lead to the respective values
+	twig1, _, ok := node.findClosest(key1)
+	assert.True(t, twig1.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
+
+	twig2, _, ok := node.findClosest(key2)
+	assert.True(t, twig2.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
 }
 
 func TestAddToFanNode_UnmatchedPrefix7_Nibble2_Shift0(t *testing.T) {
@@ -291,11 +336,20 @@ func TestAddToFanNode_UnmatchedPrefix7_Nibble2_Shift0(t *testing.T) {
 	require.Equal(t, 5, actNibSize)
 
 	var (
-		expected = (uint64(1) << 0b01111) // just key2 here, key1 & emptyBit are in the child fan-node
+		expected = (uint64(1) << 0b11111) | (uint64(1) << 0b01111)
 		actual   = node.bitpack & actBitmapMask
 	)
 
 	assert.Equal(t, expected, actual)
+
+	// check if both keys lead to the respective values
+	twig1, _, ok := node.findClosest(key1)
+	assert.True(t, twig1.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
+
+	twig2, _, ok := node.findClosest(key2)
+	assert.True(t, twig2.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
 }
 
 func TestAddToFanNode_UnmatchedPrefix4_Nibble4_Shift6(t *testing.T) {
@@ -329,19 +383,30 @@ func TestAddToFanNode_UnmatchedPrefix4_Nibble4_Shift6(t *testing.T) {
 	require.Zero(t, node.bitpack&leafBitMask, "should be a fan-node, not leaf")
 
 	var (
+		actShift   = int(node.bitpack&nibShiftMask) >> nibShiftOffset
 		actPfxSize = int(node.bitpack&pfxSizeMask) >> pfxSizeOffset
 		actNibSize = int(node.bitpack&nibSizeMask) >> nibSizeOffset
 		actBitmapWidth = (uint64(1) << actNibSize) + 1 // one extra bit to encode an empty key
 		actBitmapMask  = (uint64(1) << actBitmapWidth) - 1
 	)
 
+	require.Equal(t, 6, actShift)
 	require.Equal(t, 0, actPfxSize)
-	require.Equal(t, 2, actNibSize)
+	require.Equal(t, 4, actNibSize)
 
 	var (
-		expected = (uint64(1) << 0b11) // just key2 here, key1 & emptyBit are in the child fan-node
+		expected = (uint64(1) << 0b1111) | (uint64(1) << 0b0011)
 		actual   = node.bitpack & actBitmapMask
 	)
 
 	assert.Equal(t, expected, actual)
+
+	// check if both keys lead to the respective values
+	twig1, _, ok := node.findClosest(key1)
+	assert.True(t, twig1.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
+
+	twig2, _, ok := node.findClosest(key2)
+	assert.True(t, twig2.bitpack & leafBitMask != 0)
+	assert.True(t, ok)
 }

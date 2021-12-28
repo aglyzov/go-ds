@@ -36,29 +36,18 @@ func addToFanNode(node *Twig, key string, val interface{}) {
 	if pfxSize > 0 {
 		// the fan-node has a prefix - check if it matches the key
 		var (
-			keySize   = len(key)*byteWidth - shift
-			cmpSize   = pfxSize
-			notEnough = keySize < cmpSize
-		)
-
-		if notEnough {
-			// The key doesn't have enough bits - we can only compare this much.
-			// In any case we have to split the prefix inserting a new fan-node.
-			cmpSize = keySize
-		}
-
-		var (
 			pfxOffset = pfxSizeOffset - pfxSize
-			pfxMask   = (uint64(1) << cmpSize) - 1
+			pfxMask   = (uint64(1) << pfxSize) - 1
 			pfx       = (bitpack >> pfxOffset) & pfxMask
 			prevShift = shift
 			prevKey   = key
 			nib64     uint64
 		)
 
-		nib64, key, shift = takeNbits(key, shift, cmpSize)
+		nib64, key, shift = takeNbits(key, shift, pfxSize)
 
-		if notEnough || pfx != nib64 {
+		if pfx != nib64 {
+		//if pfx != nib64 {
 			// the prefix doesn't match the key - insert a fan-node before the old one:
 			//
 			//   old-prefix == matching-part + unmatched-part
@@ -66,9 +55,9 @@ func addToFanNode(node *Twig, key string, val interface{}) {
 			//   matching-part::new-fan-node -> unmatched-part::old-fan-node
 			//
 			var (
-				diff       = uint32(pfx^nib64) | (1 << cmpSize)
+				diff       = uint32(pfx^nib64) | (1 << pfxSize)
 				newPfxSize = bits.TrailingZeros32(diff) // number of matching bits
-				newNibSize = cmpSize - newPfxSize
+				newNibSize = pfxSize - newPfxSize
 			)
 
 			for newNibSize < nibSizeMax && newPfxSize > 0 {
@@ -78,10 +67,10 @@ func addToFanNode(node *Twig, key string, val interface{}) {
 			}
 
 			// adjust the old node's prefix and shift
-			var oldPfxSize = 0
+			var oldPfxSize = pfxSize - pfxSize
 
 			if newNibSize > nibSizeMax {
-				oldPfxSize = newNibSize - nibSizeMax
+				oldPfxSize += newNibSize - nibSizeMax
 				newNibSize = nibSizeMax
 			}
 
@@ -91,13 +80,13 @@ func addToFanNode(node *Twig, key string, val interface{}) {
 			)
 
 			oldFan.bitpack &= ^(nibShiftMask | pfxSizeMask) // clear the fields
-			oldFan.bitpack |= uint64(oldShift)<<nibSizeOffset | uint64(oldPfxSize)<<pfxSizeOffset
+			oldFan.bitpack |= uint64(oldShift)<<nibShiftOffset | uint64(oldPfxSize)<<pfxSizeOffset
 
 			// insert a fan-node before the old one
 			var (
 				newPfx = uint32(pfx) & ((1 << newPfxSize) - 1)
 				newFan = newFanNode(prevShift, newNibSize, newPfxSize, newPfx)
-				newNib = (nib64 >> newPfxSize) & ((1 << newNibSize) - 1)
+				newNib = (pfx >> newPfxSize) & ((1 << newNibSize) - 1)
 			)
 
 			newFan.bitpack |= uint64(1) << newNib
