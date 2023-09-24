@@ -57,7 +57,7 @@ const (
 	leafBitOffset    = 63 // 1-bit flag:   1 - leaf, 0 - node
 	embKeyBitOffset  = 62 // 1-bit flag:   key tail  1 - embedded, 0 - stored in pointer (*KV)
 	cutBitOffset     = 62 // 1-bit flag:   1 - cut-node, 0 - fan-node
-	nibShiftOffset   = 59 // 3-bit number: current nibble's shift in a byte
+	nibShiftOffset   = 59 // 3-bit number: current nibble's bit offset in to a byte
 	embKeySizeOffset = 56 // 3-bit number: number of embedded key bytes [1..7]
 	nibSizeOffset    = 56 // 3-bit number: size of a nibble in bits [1..5]
 	pfxSizeOffset    = 51 // 5-bit number: size of a stored prefix in bits [0..31]

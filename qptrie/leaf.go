@@ -88,10 +88,11 @@ func addToLeaf(leaf *Twig, key string, val interface{}) {
 
 	var cur = leaf
 
-	cur.bitpack &= nibShiftMask // reset to an empty fan-node
-
 	if num > 0 {
 		// keys have a common prefix - replace cur with a cut-node -> fan-node sequence
+
+		// TODO: add a single fan-node with a prefix if possible
+
 		var (
 			prefix  = key[:num]
 			fanNode = newFanNode(0, nibSizeMax, 0, 0)
@@ -102,13 +103,17 @@ func addToLeaf(leaf *Twig, key string, val interface{}) {
 
 		*cur = *cutNode
 		cur = fanNode
+	} else {
+		*cur = *newFanNode(shift, nibSizeMax, 0, 0)
 	}
 
 	// append fan-nodes if necessary
+
+	// TODO: add a single fan-node with a prefix if possible
+
 	var (
-		// TODO: takeNbits
-		nib1, key1, shift1 = take5bits(key[num:], shift)
-		nib2, key2, shift2 = take5bits(kv.Key[num:], shift)
+		nib1, key1, shift1 = takeNbits(key[num:], shift, nibSizeMax)
+		nib2, key2, shift2 = takeNbits(kv.Key[num:], shift, nibSizeMax)
 	)
 
 	for nib1 == nib2 {
@@ -119,9 +124,8 @@ func addToLeaf(leaf *Twig, key string, val interface{}) {
 		cur.pointer = unsafe.Pointer(node)
 		cur = node
 
-		// TODO: takeNbits
-		nib1, key1, shift1 = take5bits(key1, shift1)
-		nib2, key2, shift2 = take5bits(key2, shift2)
+		nib1, key1, shift1 = takeNbits(key1, shift1, nibSizeMax)
+		nib2, key2, shift2 = takeNbits(key2, shift2, nibSizeMax)
 	}
 
 	// end with two leaves

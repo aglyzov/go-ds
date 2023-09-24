@@ -1,14 +1,16 @@
 package qptrie
 
-const byteWidth = 8
+const (
+	byteWidth   = 8             // 0b1000
+	byteModMask = byteWidth - 1 // 0b0111
+)
 
 // takeNbits takes `num` bits [0..63] from a string skipping the first `skip`
 // bits [0..7].
 //
 // Returns three values: <taken-bits:uint64>, "string-remainder", <new-shift:int>
-//
 func takeNbits(str string, skip, num int) (uint64, string, int) {
-	var strLen = len(str)
+	strLen := len(str)
 
 	if strLen == 0 {
 		return uint64(1) << num, str, 0
@@ -40,13 +42,12 @@ func takeNbits(str string, skip, num int) (uint64, string, int) {
 
 	offset := skip + needBits
 
-	return result & mask, str[offset/byteWidth:], offset % byteWidth
+	return result & mask, str[offset/byteWidth:], offset & byteModMask
 }
 
 // take5bits takes 5 bits from a string skipping the first `skip` bits [0..7].
 //
 // Returns three values: <taken-bits:byte>, "string-remainder", <new-shift:int>
-//
 func take5bits(str string, skip int) (byte, string, int) {
 	const (
 		bits    = 5
@@ -54,14 +55,14 @@ func take5bits(str string, skip int) (byte, string, int) {
 		noValue = 0b_100000 // 32
 	)
 
-	var strLen = len(str)
+	strLen := len(str)
 
 	if strLen == 0 {
 		return noValue, str, 0
 	}
 
 	var (
-		nshift = (skip + bits) % byteWidth
+		nshift = (skip + bits) & byteModMask // % byteWidth
 		nib    = str[0] >> skip
 	)
 
