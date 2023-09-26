@@ -1,49 +1,3 @@
-// Package qptrie defines an implementation of a QP-Trie data structure with opinionated
-// extensions.
-//
-// A QP-Trie consists of a number of connected Twigs (nodes and leaves). All branches
-// end with a leaf Twig.
-//
-// Each Twig has two fields:
-//
-//  - bitpack - 64-bit packed settings of the twig (structure depends on a twig type);
-//  - pointer - an unsafe.Pointer to either a leaf value or an array of node children.
-//
-// Bitpack structure variants:
-//
-//  - Regular Leaf:
-//
-//    [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    56:55-00     ]
-//    <1:leaf> <0:reg> <NNN:shift> ---------------------------------  TODO: embed the first part of the key
-//
-//  - Embedding Leaf:
-//
-//    [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    56:55-00     ]
-//    <1:leaf> <1:emb> <NNN:shift> <NNN:emb-len> <KKK...KKK:emb-key>
-//
-//  - Fan-node:
-//
-//    [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [   5:55-51   ] [   50-..   ] [ 32|16|08|04|02|01-00 ]
-//    <0:node> <0:fan> <NNN:shift> <NNN:nib-len> <NNNNN:pfx-len> <KK...KK:pfx> <BBBBB...BBBBB:twig-map>
-//
-//  - Regular Cut-Node:
-//
-//    [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    56:55-00     ]
-//    <0:node> <1:cut> <NNN:shift> <000:not-emb> -------------------  TODO: embed the first part of the key (?)
-//
-//  - Embedding Cut-Node:
-//
-//    [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    56:55-00     ]
-//    <0:node> <1:cut> <NNN:shift> <NNN:emb-len> [KKK...KKK:emb-key]
-//
-// Pointer variants:
-//
-//  - Regular Leaf:        unsafe.Pointer( &KV{Key:"tail", Val:<value:interface{}>} )
-//  - Embedding Leaf:      unsafe.Pointer( &<value:interface{}> )
-//  - Fan-Node:            unsafe.Pointer( <twigs:*[N]Twig> )
-//  - Regular Cut-Node:    unsafe.Pointer( &KV{Key:"tail", Val:(interface{}).(<twig:*Twig>)} )
-//  - Embedding Cut-Node:  unsafe.Pointer( <twig:*Twig>} )
-//
 package qptrie
 
 import (
@@ -52,7 +6,7 @@ import (
 )
 
 func newCutNode(cut string, shift int, twig *Twig) *Twig {
-	var node = Twig{
+	node := Twig{
 		bitpack: cutBitMask | uint64(shift)<<nibShiftOffset,
 		pointer: unsetPtr, // it is forbidden to have a nil Pointer
 	}
@@ -76,22 +30,20 @@ func newCutNode(cut string, shift int, twig *Twig) *Twig {
 //
 // 1) key is smaller and all bits of the key match:
 //
-//  |...........cut.................|....next....|
-//  |...........key...........|
-//
+//	|...........cut.................|....next....|
+//	|...........key...........|
 //
 // 2) there is at least one bit of difference (no matter the key size):
 //
-//  |........cut....!.......|....next....|
-//                  * diff bit
-//  |........key....!..|
+//	|........cut....!.......|....next....|
+//	                * diff bit
+//	|........key....!..|
 //
-//  or
+//	or
 //
-//  |........cut....!.......|....next....|
-//                  * diff bit
-//  |........key....!..............|
-//
+//	|........cut....!.......|....next....|
+//	                * diff bit
+//	|........key....!..............|
 func addToCutNode(node *Twig, key string, val interface{}) {
 	// find the longest common key prefix
 	var (
@@ -100,7 +52,7 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 		cutBytes  = len(cut)
 		keyBytes  = len(key)
 		minBytes  = keyBytes // min(cutBytes, keyBytes)
-		headBytes int // amount of full bytes in a common prefix (head)
+		headBytes int        // amount of full bytes in a common prefix (head)
 	)
 
 	if minBytes > cutBytes {
@@ -112,12 +64,12 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 	}
 
 	var (
-		keyBits  = keyBytes*byteWidth - shift  // total bits in the key
-		cutBits  = cutBytes*byteWidth - shift  // total bits in the cut
+		keyBits = keyBytes*byteWidth - shift // total bits in the key
+		cutBits = cutBytes*byteWidth - shift // total bits in the cut
 	)
 
 	// determine total number of bits in a head
-	var headBits = headBytes*byteWidth - shift // always <= cutBits (preliminary)
+	headBits := headBytes*byteWidth - shift // always <= cutBits (preliminary)
 
 	if headBytes < minBytes {
 		// there is at least one bit of difference
@@ -128,16 +80,16 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 		tailBits = cutBits - headBits // cut's tail
 
 		// next twig
-		next        = getCutNodeTwig(node)
-		nextIsNode  = next.bitpack&leafBitMask == 0
-		nextIsFan   = next.bitpack&cutBitMask == 0
-		//nextPfxSize = 0 // preliminary
+		next       = getCutNodeTwig(node)
+		nextIsNode = next.bitpack&leafBitMask == 0
+		nextIsFan  = next.bitpack&cutBitMask == 0
+		// nextPfxSize = 0 // preliminary
 
 		// preliminary parameters of a new fan-node
 		pfxSize = headBits
 		nibSize = nibSizeMax
 		remBits = cutBits - pfxSize - nibSize
-		//brwBits = 0 // borrowed bits
+		// brwBits = 0 // borrowed bits
 	)
 
 	if nextIsNode && nextIsFan {
@@ -210,7 +162,7 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 	// TODO: create a fan-node to insert in the middle of the cut
 
 	if pfxOffset > 0 {
-		// TODO: 
+		// TODO:
 
 		if pfxOffset <= pfxSizeMax+nibSizeMax {
 			// delta is small enough to be covered by a fan-node with a prefix.
@@ -254,7 +206,7 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 			*node = *newFanNode(shift, nibSize, pfxSize, uint32(pfx))
 
 			node.bitpack |= uint64(1) << nib
-			//node.pointer = // TODO: add nib -> pointer to the new fan-node
+			// node.pointer = // TODO: add nib -> pointer to the new fan-node
 		} else {
 			// trim the cut-node key to cover the fist delta bits
 		}
@@ -318,7 +270,7 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 	//   new-fan-node -+
 	//                 `-> new-leaf
 	//
-	var newFan = newFanNode(shift, nibSizeMax, 0, 0)
+	newFan := newFanNode(shift, nibSizeMax, 0, 0)
 
 	*node = *newFan // replace
 	newFan = node
