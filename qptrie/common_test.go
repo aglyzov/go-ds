@@ -50,3 +50,11 @@ func uint64ToBitString(val uint64) string {
 
 	return strings.TrimRight(buf.String(), "0_")
 }
+
+func reverseString(s string) string {
+	runes := []rune(s)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}

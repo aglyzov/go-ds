@@ -14,13 +14,11 @@ func BenchmarkTakeNbits(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		key := keys[i%numKeys]
-		_, _, _ = takeNbits(key, i%8, 5)
+		_, _, _ = takeNbits(key, i&0b111, 5) // i&0b111 == i%8
 	}
 }
 
 func BenchmarkTake5bits(b *testing.B) {
-	const noValue = ^byte(0)
-
 	var (
 		keys    = []string{"", "a", "ab", "abc", "abcde"}
 		numKeys = len(keys)
@@ -30,6 +28,6 @@ func BenchmarkTake5bits(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		key := keys[i%numKeys]
-		_, _, _ = take5bits(key, i%8)
+		_, _, _ = take5bits(key, i&0b111) // i&0b111 == i%8
 	}
 }

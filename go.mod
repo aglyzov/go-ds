@@ -1,6 +1,6 @@
 module github.com/aglyzov/go-ds
 
-go 1.17
+go 1.21
 
 require (
 	github.com/hideo55/go-popcount v0.0.0-20170530181440-863800c130e8

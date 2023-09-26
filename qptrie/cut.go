@@ -60,13 +60,12 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 	}
 
 	// count full bytes in a common prefix
-	for ; headBytes < minBytes && key[headBytes] == cut[headBytes]; headBytes++ {
+	for headBytes < minBytes && key[headBytes] == cut[headBytes] {
+		headBytes++
 	}
 
-	var (
-		keyBits = keyBytes*byteWidth - shift // total bits in the key
-		cutBits = cutBytes*byteWidth - shift // total bits in the cut
-	)
+	// keyBits = keyBytes*byteWidth - shift // total bits in the key
+	cutBits := cutBytes*byteWidth - shift // total bits in the cut
 
 	// determine total number of bits in a head
 	headBits := headBytes*byteWidth - shift // always <= cutBits (preliminary)
@@ -77,13 +76,13 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 	}
 
 	var (
-		tailBits = cutBits - headBits // cut's tail
+		// tailBits = cutBits - headBits // cut's tail
 
 		// next twig
-		next       = getCutNodeTwig(node)
-		nextIsNode = next.bitpack&leafBitMask == 0
-		nextIsFan  = next.bitpack&cutBitMask == 0
-		// nextPfxSize = 0 // preliminary
+		next        = getCutNodeTwig(node)
+		nextIsNode  = next.bitpack&leafBitMask == 0
+		nextIsFan   = next.bitpack&cutBitMask == 0
+		nextPfxSize = 0 // preliminary
 
 		// preliminary parameters of a new fan-node
 		pfxSize = headBits
@@ -101,6 +100,8 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 
 		nextPfxSize = int((next.bitpack >> offset) & mask)
 	}
+
+	_ = nextPfxSize // TODO: use
 
 	/* TODO
 	// extend the tail at the expense of the next fan's prefix if necessary
@@ -209,6 +210,8 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 			// node.pointer = // TODO: add nib -> pointer to the new fan-node
 		} else {
 			// trim the cut-node key to cover the fist delta bits
+			// TODO
+			_ = 123
 		}
 	}
 
@@ -219,6 +222,7 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 		//   old-cut-node -> new-fan-node -+
 		//                                 `-> new-leaf
 		var (
+			num    = 0         // TODO: remove and fix
 			prefix = key[:num] // TODO: fix - prefix has to be less than one of the keys
 			newFan = newFanNode(0, nibSizeMax, 0, 0)
 			oldCut = newCutNode(prefix, shift, newFan)
@@ -246,7 +250,7 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 
 		var (
 			newLeaf = newLeaf(key1, shift1, val)
-			newCut  = newCutNode(key2, shift2, twig)
+			newCut  = newCutNode(key2, shift2, newLeaf) // TODO: check
 			twigs   [2]Twig
 		)
 
@@ -294,7 +298,7 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 
 	var (
 		newLeaf = newLeaf(key1, shift1, val)
-		newCut  = newCutNode(key2, shift2, twig)
+		newCut  = newCutNode(key2, shift2, newLeaf) // TODO: check
 		twigs   [2]Twig
 	)
 
@@ -308,8 +312,6 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 
 	newFan.bitpack |= (uint64(1) << nib1) | (uint64(1) << nib2)
 	newFan.pointer = unsafe.Pointer(&twigs)
-
-	return
 }
 
 func getCutNodeKey(node *Twig) string {

@@ -1,8 +1,9 @@
 package qptrie
 
 const (
-	byteWidth   = 8             // 0b1000
-	byteModMask = byteWidth - 1 // 0b0111
+	byteShift   = 3
+	byteWidth   = 1 << byteShift // 0b1000
+	byteModMask = byteWidth - 1  // 0b0111
 )
 
 // takeNbits takes `num` bits [0..63] from a string skipping the first `skip`
@@ -26,7 +27,7 @@ func takeNbits(str string, skip, num int) (uint64, string, int) {
 	var (
 		mask     = (uint64(1) << num) - 1
 		result   = uint64(str[0] >> skip)
-		strBits  = strLen*byteWidth - skip
+		strBits  = strLen<<byteShift - skip
 		doneBits = byteWidth - skip
 		needBits = num
 	)
@@ -42,7 +43,7 @@ func takeNbits(str string, skip, num int) (uint64, string, int) {
 
 	offset := skip + needBits
 
-	return result & mask, str[offset/byteWidth:], offset & byteModMask
+	return result & mask, str[offset>>byteShift:], offset & byteModMask
 }
 
 // take5bits takes 5 bits from a string skipping the first `skip` bits [0..7].
