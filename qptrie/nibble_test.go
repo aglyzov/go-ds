@@ -11,8 +11,6 @@ import (
 func TestTakeNbits(t *testing.T) {
 	t.Parallel()
 
-	const noValue = ^uint64(0)
-
 	for _, tcase := range []*struct {
 		BitKey   string
 		Shift    int
@@ -27,6 +25,12 @@ func TestTakeNbits(t *testing.T) {
 		{"", 7, 4, 0b10000, "", 0},
 		{"", 7, 8, 0b100000000, "", 0},
 		{"", 7, 13, 0b10000000000000, "", 0},
+		{"01010101", 0, 4, 0b1010, "01010101", 4},
+		{"01010101", 1, 4, 0b0101, "01010101", 5},
+		{"01010101", 2, 4, 0b1010, "01010101", 6},
+		{"01010101", 3, 4, 0b0101, "01010101", 7},
+		{"01010101", 4, 4, 0b1010, "", 0},
+		{"01010101", 5, 4, 0b0101, "", 0},
 		{"01010101", 0, 5, 0b01010, "01010101", 5},
 		{"01010101", 1, 5, 0b10101, "01010101", 6},
 		{"01010101", 2, 5, 0b01010, "01010101", 7},
@@ -70,8 +74,6 @@ func TestTakeNbits(t *testing.T) {
 func TestTake5bits(t *testing.T) {
 	t.Parallel()
 
-	const noValue = ^byte(0)
-
 	for _, tcase := range []*struct {
 		BitKey   string
 		Shift    int
@@ -105,6 +107,52 @@ func TestTake5bits(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			nib, key, shift := take5bits(key, tcase.Shift)
+
+			bitKey := stringToBitString(key)
+
+			assert.Equal(t, tcase.ExpNib, nib, stringToBitString(string([]byte{nib})))
+			assert.Equal(t, tcase.ExpKey, bitKey)
+			assert.Equal(t, tcase.ExpShift, shift)
+		})
+	}
+}
+
+func TestTake4bits(t *testing.T) {
+	t.Parallel()
+
+	for _, tcase := range []*struct {
+		BitKey   string
+		Shift    int
+		ExpNib   byte
+		ExpKey   string
+		ExpShift int
+	}{
+		{"", 0, 0b10000, "", 0},
+		{"", 7, 0b10000, "", 0},
+		{"01010101", 0, 0b1010, "01010101", 4},
+		{"01010101", 1, 0b0101, "01010101", 5},
+		{"01010101", 2, 0b1010, "01010101", 6},
+		{"01010101", 3, 0b0101, "01010101", 7},
+		{"01010101", 4, 0b1010, "", 0},
+		{"01010101", 5, 0b0101, "", 0},
+		{"01010101", 6, 0b0010, "", 0},
+		{"01010101", 7, 0b0001, "", 0},
+		{"01010101_11001100", 3, 0b0101, "01010101_11001100", 7},
+		{"01010101_11001100", 4, 0b1010, "11001100", 0},
+		{"01010101_11001100", 5, 0b1101, "11001100", 1},
+		{"01010101_11001100", 6, 0b1110, "11001100", 2},
+		{"01010101_11001100", 7, 0b0111, "11001100", 3},
+		{"01010101_11001100_10101010", 7, 0b0111, "11001100_10101010", 3},
+	} {
+		var (
+			tcase = tcase
+			name  = fmt.Sprintf("%#v,%#v", tcase.BitKey, tcase.Shift)
+		)
+		key, err := bitStringToString(tcase.BitKey)
+		require.NoError(t, err)
+
+		t.Run(name, func(t *testing.T) {
+			nib, key, shift := take4bits(key, tcase.Shift)
 
 			bitKey := stringToBitString(key)
 
