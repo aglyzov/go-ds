@@ -199,10 +199,10 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 			)
 
 			if pfxSize > 0 {
-				pfx, cut, nibShift = takeNbits(cut, shift, pfxSize)
+				pfx, cut, nibShift = takeNBits(cut, shift, pfxSize)
 			}
 
-			nib, cut, shift = takeNbits(cut, nibShift, nibSize)
+			nib, cut, shift = takeNBits(cut, nibShift, nibSize)
 
 			*node = *newFanNode(shift, nibSize, pfxSize, uint32(pfx))
 
@@ -232,8 +232,8 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 		shift = 0       // reset
 
 		var (
-			nib1, key1, shift1 = takeNbits(key[num:], shift, nibSizeMax)
-			nib2, key2, shift2 = takeNbits(cut[num:], shift, nibSizeMax)
+			nib1, key1, shift1 = takeNBits(key[num:], shift, nibSizeMax)
+			nib2, key2, shift2 = takeNBits(cut[num:], shift, nibSizeMax)
 		)
 
 		for nib1 == nib2 {
@@ -244,8 +244,8 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 			newFan.pointer = unsafe.Pointer(node)
 			newFan = node
 
-			nib1, key1, shift1 = takeNbits(key1, shift1, nibSizeMax)
-			nib2, key2, shift2 = takeNbits(key2, shift2, nibSizeMax)
+			nib1, key1, shift1 = takeNBits(key1, shift1, nibSizeMax)
+			nib2, key2, shift2 = takeNBits(key2, shift2, nibSizeMax)
 		}
 
 		var (
@@ -280,8 +280,8 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 	newFan = node
 
 	var (
-		nib1, key1, shift1 = takeNbits(key, shift, nibSizeMax)
-		nib2, key2, shift2 = takeNbits(cut, shift, nibSizeMax)
+		nib1, key1, shift1 = takeNBits(key, shift, nibSizeMax)
+		nib2, key2, shift2 = takeNBits(cut, shift, nibSizeMax)
 	)
 
 	for nib1 == nib2 {
@@ -292,8 +292,8 @@ func addToCutNode(node *Twig, key string, val interface{}) {
 		newFan.pointer = unsafe.Pointer(node)
 		newFan = node
 
-		nib1, key1, shift1 = takeNbits(key1, shift1, nibSizeMax)
-		nib2, key2, shift2 = takeNbits(key2, shift2, nibSizeMax)
+		nib1, key1, shift1 = takeNBits(key1, shift1, nibSizeMax)
+		nib2, key2, shift2 = takeNBits(key2, shift2, nibSizeMax)
 	}
 
 	var (

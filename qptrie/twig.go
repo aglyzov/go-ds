@@ -149,7 +149,7 @@ func (qp *Twig) findClosest(key string) (*Twig, string, bool) {
 				pfx       = (bitpack >> pfxOffset) & pfxMask
 			)
 
-			nib64, key, shift = takeNbits(key, shift, pfxSize)
+			nib64, key, shift = takeNBits(key, shift, pfxSize)
 
 			if pfx != nib64 {
 				// the prefix doesn't match the key
@@ -157,7 +157,7 @@ func (qp *Twig) findClosest(key string) (*Twig, string, bool) {
 			}
 		}
 
-		nib64, key, shift = takeNbits(key, shift, nibSize)
+		nib64, key, shift = takeNBits(key, shift, nibSize)
 		nib = byte(nib64 & 0xFF)
 
 		var (

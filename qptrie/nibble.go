@@ -6,18 +6,18 @@ const (
 	byteModMask = byteWidth - 1  // 0b0111
 )
 
-// takeNbits takes `num` bits [0..63] from a string skipping the first `skip`
+// takeNBits takes `num` bits [0..63] from a string skipping the first `skip`
 // bits [0..7].
 //
 // Returns three values: <taken-bits:uint64>, "string-remainder", <new-shift:int>
-func takeNbits(str string, skip, num int) (uint64, string, int) {
+func takeNBits(str string, skip, num int) (uint64, string, int) {
 	// fast path
 	switch num {
 	case 4:
-		nib, str, shift := take4bits(str, skip)
+		nib, str, shift := take4Bits(str, skip)
 		return uint64(nib), str, shift
 	case 5:
-		nib, str, shift := take5bits(str, skip)
+		nib, str, shift := take5Bits(str, skip)
 		return uint64(nib), str, shift
 	}
 
@@ -49,10 +49,10 @@ func takeNbits(str string, skip, num int) (uint64, string, int) {
 	return result & mask, str[offset>>byteShift:], offset & byteModMask
 }
 
-// take5bits takes 5 bits from a string skipping the first `skip` bits [0..7].
+// take5Bits takes 5 bits from a string skipping the first `skip` bits [0..7].
 //
 // Returns three values: <taken-bits:byte>, "string-remainder", <new-shift:int>
-func take5bits(str string, skip int) (byte, string, int) {
+func take5Bits(str string, skip int) (byte, string, int) {
 	const (
 		bits    = 5
 		mask    = 0b_011111 // 31
@@ -84,10 +84,10 @@ func take5bits(str string, skip int) (byte, string, int) {
 	}
 }
 
-// take4bits takes 4 bits from a string skipping the first `skip` bits [0..7].
+// take4Bits takes 4 bits from a string skipping the first `skip` bits [0..7].
 //
 // Returns three values: <taken-bits:byte>, "string-remainder", <new-shift:int>
-func take4bits(str string, skip int) (byte, string, int) {
+func take4Bits(str string, skip int) (byte, string, int) {
 	const (
 		bits    = 4
 		mask    = 0b_01111 // 15

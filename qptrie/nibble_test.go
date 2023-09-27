@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTakeNbits(t *testing.T) {
+func TestTakeNBits(t *testing.T) {
 	t.Parallel()
 
 	for _, tcase := range []*struct {
@@ -60,7 +60,7 @@ func TestTakeNbits(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run(name, func(t *testing.T) {
-			nib, key, shift := takeNbits(key, tcase.Shift, tcase.Size)
+			nib, key, shift := takeNBits(key, tcase.Shift, tcase.Size)
 
 			bitKey := stringToBitString(key)
 
@@ -71,7 +71,7 @@ func TestTakeNbits(t *testing.T) {
 	}
 }
 
-func TestTake5bits(t *testing.T) {
+func TestTake5Bits(t *testing.T) {
 	t.Parallel()
 
 	for _, tcase := range []*struct {
@@ -106,7 +106,7 @@ func TestTake5bits(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run(name, func(t *testing.T) {
-			nib, key, shift := take5bits(key, tcase.Shift)
+			nib, key, shift := take5Bits(key, tcase.Shift)
 
 			bitKey := stringToBitString(key)
 
@@ -117,7 +117,7 @@ func TestTake5bits(t *testing.T) {
 	}
 }
 
-func TestTake4bits(t *testing.T) {
+func TestTake4Bits(t *testing.T) {
 	t.Parallel()
 
 	for _, tcase := range []*struct {
@@ -152,7 +152,7 @@ func TestTake4bits(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run(name, func(t *testing.T) {
-			nib, key, shift := take4bits(key, tcase.Shift)
+			nib, key, shift := take4Bits(key, tcase.Shift)
 
 			bitKey := stringToBitString(key)
 

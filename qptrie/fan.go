@@ -44,10 +44,10 @@ func addToFanNode(node *Twig, key string, val interface{}) {
 			nib64     uint64
 		)
 
-		nib64, key, shift = takeNbits(key, shift, pfxSize)
+		nib64, key, shift = takeNBits(key, shift, pfxSize)
 
 		if pfx != nib64 {
-		//if pfx != nib64 {
+			//if pfx != nib64 {
 			// the prefix doesn't match the key - insert a fan-node before the old one:
 			//
 			//   old-prefix == matching-part + unmatched-part
@@ -67,7 +67,7 @@ func addToFanNode(node *Twig, key string, val interface{}) {
 			}
 
 			// adjust the old node's prefix and shift
-			var oldPfxSize = pfxSize - pfxSize
+			oldPfxSize := pfxSize - pfxSize
 
 			if newNibSize > nibSizeMax {
 				oldPfxSize += newNibSize - nibSizeMax
@@ -95,7 +95,7 @@ func addToFanNode(node *Twig, key string, val interface{}) {
 			*node = *newFan // replace the old fan-node with the new one
 
 			// trim the key and adjust current shift
-			_, key, shift = takeNbits(prevKey, prevShift, newPfxSize)
+			_, key, shift = takeNBits(prevKey, prevShift, newPfxSize)
 
 			bitpack = node.bitpack
 		}
@@ -115,7 +115,7 @@ func addToFanNode(node *Twig, key string, val interface{}) {
 		return
 	}
 
-	nib64, key, shift := takeNbits(key, shift, nibSize)
+	nib64, key, shift := takeNBits(key, shift, nibSize)
 	nib := byte(nib64 & 0xFF)
 
 	var (
