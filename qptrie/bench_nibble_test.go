@@ -22,6 +22,20 @@ func BenchmarkTakeNBits(b *testing.B) {
 	}
 }
 
+func BenchmarkTakeNBitsAlt(b *testing.B) {
+	var (
+		keys    = getKeysToTakeBits()
+		numKeys = len(keys)
+	)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		key := keys[i%numKeys]
+		_, _, _ = takeNBitsAlt(key, i&0b111, i&0b111111) // &0b111 == %8, &0b111111 == %64
+	}
+}
+
 func BenchmarkTakeNBitsSwitch(b *testing.B) {
 	var (
 		keys    = getKeysToTakeBits()

@@ -1,5 +1,7 @@
 package qptrie
 
+import "unsafe"
+
 const (
 	byteShift   = 3
 	byteWidth   = 1 << byteShift // 0b1000
@@ -47,6 +49,63 @@ func takeNBits(str string, skip, num int) (uint64, string, int) {
 	offset := skip + needBits
 
 	return result & mask, str[offset>>byteShift:], offset & byteModMask
+}
+
+// takeNBitsAlt takes `num` bits [0..64] from a string skipping the first `skip`
+// bits [0..7].
+//
+// Returns three values: <taken-bits:uint64>, "string-remainder", <new-shift:int>
+func takeNBitsAlt(str string, skip, num int) (uint64, string, int) {
+	var (
+		bits     uint64
+		reqBits  = skip + num
+		reqBytes = reqBits >> byteShift
+		newSkip  = reqBits & byteModMask
+		mask     = uint64(1)<<num - 1
+		ptr      = unsafe.Pointer(unsafe.StringData(str))
+	)
+
+	if newSkip != 0 {
+		reqBytes++
+	}
+
+	if strLen := len(str); strLen < reqBytes {
+		reqBytes = strLen
+		newSkip = 0
+	}
+
+	switch reqBytes {
+	case 9:
+		bits |= uint64(str[8]) << (byteWidth*8 - skip)
+		fallthrough
+	case 8:
+		bits |= *(*uint64)(ptr) >> skip
+	case 7:
+		bits |= uint64(str[6]) << (byteWidth*6 - skip)
+		fallthrough
+	case 6:
+		bits |= uint64(*(*uint32)(ptr) >> skip)
+		ptr = unsafe.Add(ptr, 4)
+		bits |= uint64(*(*uint16)(ptr)) << (byteWidth*4 - skip)
+	case 5:
+		bits |= uint64(str[4]) << (byteWidth*4 - skip)
+		fallthrough
+	case 4:
+		bits |= uint64(*(*uint32)(ptr) >> skip)
+	case 3:
+		bits |= uint64(str[2]) << (byteWidth*2 - skip)
+		fallthrough
+	case 2:
+		bits |= uint64(*(*uint16)(ptr) >> skip)
+	case 1:
+		bits |= uint64(str[0] >> skip)
+	case 0:
+		return uint64(1) << num, "", 0
+	}
+
+	offset := min(len(str), reqBits>>byteShift)
+
+	return bits & mask, str[offset:], newSkip
 }
 
 // take5Bits takes 5 bits from a string skipping the first `skip` bits [0..7].

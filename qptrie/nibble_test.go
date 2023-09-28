@@ -8,9 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTakeNBits(t *testing.T) {
-	t.Parallel()
-
+func testTakeNBits(t *testing.T, fn func(string, int, int) (uint64, string, int)) {
 	for _, tcase := range []*struct {
 		BitKey   string
 		Shift    int
@@ -50,7 +48,8 @@ func TestTakeNBits(t *testing.T) {
 		{"01010101_11001100", 7, 10, 0b0001100111, "", 0},
 		{"01010101_11001100_10101010", 7, 1, 0b1, "11001100_10101010", 0},
 		{"01010101_11001100_10101010", 7, 5, 0b00111, "11001100_10101010", 4},
-		{"01010101_11001100_10101010", 7, 10, 0b1001100111, "10101010", 1},
+		{"01010101_11001100_10101010", 7, 10, 0b10_01100111, "10101010", 1},
+		{"01010101_11001100_10101010_11100011", 2, 33, 0b0_00110001_11010101_01001100_11101010, "", 0},
 	} {
 		var (
 			tcase = tcase
@@ -60,7 +59,7 @@ func TestTakeNBits(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run(name, func(t *testing.T) {
-			nib, key, shift := takeNBits(key, tcase.Shift, tcase.Size)
+			nib, key, shift := fn(key, tcase.Shift, tcase.Size)
 
 			bitKey := stringToBitString(key)
 
@@ -69,6 +68,18 @@ func TestTakeNBits(t *testing.T) {
 			assert.Equal(t, tcase.ExpShift, shift)
 		})
 	}
+}
+
+func TestTakeNBits(t *testing.T) {
+	t.Parallel()
+
+	testTakeNBits(t, takeNBits)
+}
+
+func TestTakeNBitsAlt(t *testing.T) {
+	t.Parallel()
+
+	testTakeNBits(t, takeNBitsAlt)
 }
 
 func TestTake5Bits(t *testing.T) {
