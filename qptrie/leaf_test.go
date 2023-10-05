@@ -90,13 +90,13 @@ func TestAddToLeaf(t *testing.T) {
 				key2, _ = bitStringToString(tcase.Key2)
 			)
 
-			var twig = newLeaf(key1, tcase.Shift, "one")
+			twig := newLeaf(key1, tcase.Shift, "one")
 
 			require.NotZero(t, twig.bitpack&leafBitMask, "should be a leaf, not a node")
 
 			addToLeaf(twig, key2, "two")
 
-			var twigType = byte((twig.bitpack >> cutBitOffset) & 0b_11)
+			twigType := byte((twig.bitpack >> cutBitOffset) & 0b_11)
 
 			require.Equal(t, tcase.ExpType, twigType)
 
@@ -130,12 +130,12 @@ func TestAddToLeaf(t *testing.T) {
 			}
 
 			// check if both keys lead to the respective values
-			twig1, _, ok := twig.findClosest(key1)
+			twig1, _, ok := findClosest(twig, key1)
 			require.True(t, twig1.bitpack&leafBitMask != 0)
 			assert.True(t, ok)
 			assert.Equal(t, "one", getLeafKV(twig1).Val)
 
-			twig2, _, ok := twig.findClosest(key2)
+			twig2, _, ok := findClosest(twig, key2)
 			require.True(t, twig2.bitpack&leafBitMask != 0)
 			assert.True(t, ok)
 			assert.Equal(t, "two", getLeafKV(twig2).Val)

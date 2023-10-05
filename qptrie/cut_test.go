@@ -43,45 +43,45 @@ func TestAddToCutNode(t *testing.T) {
 			ExpBitmap: uint64(1) << 0b00111,
 		},
 		/*
-		{
-			Name: "1-byte keys, diff-bit:5", Shift: 4,
-			Key1:    "1110_0110",
-			Key2:    "1110_0010",
-			ExpType: typeFanNode, ExpShift: 4, ExpPfxSize: 0, ExpNibSize: 5, ExpPfx: 0b0,
-			ExpBitmap: uint64(1)<<0b00110 | uint64(1)<<0b00100,
-		},
-		{
-			Name: "empty key and 1-byte key", Shift: 0,
-			Key1:    "",
-			Key2:    "11010110",
-			ExpType: typeFanNode, ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 5, ExpPfx: 0b0,
-			ExpBitmap: uint64(1)<<32 | uint64(1)<<0b01011,
-		},
-		{
-			Name: "1-byte key and empty key", Shift: 0,
-			Key1:    "11010110",
-			Key2:    "",
-			ExpType: typeFanNode, ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 5, ExpPfx: 0b0,
-			ExpBitmap: uint64(1)<<32 | uint64(1)<<0b01011,
-		},
-		{
-			Name: "2-byte keys, diff-bit:13", Shift: 0,
-			Key1:    "11010110_11100101",
-			Key2:    "11010110_11101101",
-			ExpType: typeCutNode, ExpShift: 0, ExpCut: "11010110",
-		},
-		{
-			Name: "1-byte key and 2-byte key", Shift: 0,
-			Key1:    "11010110",
-			Key2:    "11010110_11101101",
-			ExpType: typeCutNode, ExpShift: 0, ExpCut: "11010110",
-		},
-		{
-			Name: "2-byte key and 1-byte key", Shift: 0,
-			Key1:    "11010110_11101101",
-			Key2:    "11010110",
-			ExpType: typeCutNode, ExpShift: 0, ExpCut: "11010110",
-		},
+			{
+				Name: "1-byte keys, diff-bit:5", Shift: 4,
+				Key1:    "1110_0110",
+				Key2:    "1110_0010",
+				ExpType: typeFanNode, ExpShift: 4, ExpPfxSize: 0, ExpNibSize: 5, ExpPfx: 0b0,
+				ExpBitmap: uint64(1)<<0b00110 | uint64(1)<<0b00100,
+			},
+			{
+				Name: "empty key and 1-byte key", Shift: 0,
+				Key1:    "",
+				Key2:    "11010110",
+				ExpType: typeFanNode, ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 5, ExpPfx: 0b0,
+				ExpBitmap: uint64(1)<<32 | uint64(1)<<0b01011,
+			},
+			{
+				Name: "1-byte key and empty key", Shift: 0,
+				Key1:    "11010110",
+				Key2:    "",
+				ExpType: typeFanNode, ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 5, ExpPfx: 0b0,
+				ExpBitmap: uint64(1)<<32 | uint64(1)<<0b01011,
+			},
+			{
+				Name: "2-byte keys, diff-bit:13", Shift: 0,
+				Key1:    "11010110_11100101",
+				Key2:    "11010110_11101101",
+				ExpType: typeCutNode, ExpShift: 0, ExpCut: "11010110",
+			},
+			{
+				Name: "1-byte key and 2-byte key", Shift: 0,
+				Key1:    "11010110",
+				Key2:    "11010110_11101101",
+				ExpType: typeCutNode, ExpShift: 0, ExpCut: "11010110",
+			},
+			{
+				Name: "2-byte key and 1-byte key", Shift: 0,
+				Key1:    "11010110_11101101",
+				Key2:    "11010110",
+				ExpType: typeCutNode, ExpShift: 0, ExpCut: "11010110",
+			},
 		*/
 	} {
 		name := fmt.Sprintf("%v, shift:%v", tcase.Name, tcase.Shift)
@@ -103,7 +103,7 @@ func TestAddToCutNode(t *testing.T) {
 
 			addToCutNode(twig, key2, "two")
 
-			var twigType = byte((twig.bitpack >> cutBitOffset) & 0b_11)
+			twigType := byte((twig.bitpack >> cutBitOffset) & 0b_11)
 
 			require.Equal(t, tcase.ExpType, twigType)
 
@@ -137,12 +137,12 @@ func TestAddToCutNode(t *testing.T) {
 			}
 
 			// check if both keys lead to the respective values
-			twig1, _, ok := twig.findClosest(key1)
+			twig1, _, ok := findClosest(twig, key1)
 			require.True(t, twig1.bitpack&leafBitMask != 0)
 			assert.True(t, ok)
 			assert.Equal(t, "one", getLeafKV(twig1).Val)
 
-			twig2, _, ok := twig.findClosest(key2)
+			twig2, _, ok := findClosest(twig, key2)
 			require.True(t, twig2.bitpack&leafBitMask != 0)
 			assert.True(t, ok)
 			assert.Equal(t, "two", getLeafKV(twig2).Val)

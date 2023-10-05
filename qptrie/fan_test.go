@@ -89,7 +89,7 @@ func TestAddToFanNode(t *testing.T) {
 				emptyBit    = uint64(1) << (bitmapWidth - 1)
 			)
 
-			var node = newFanNode(tcase.Shift, tcase.NibSize, tcase.PfxSize, tcase.Pfx)
+			node := newFanNode(tcase.Shift, tcase.NibSize, tcase.PfxSize, tcase.Pfx)
 
 			node.bitpack |= emptyBit
 			node.pointer = unsafe.Pointer(newLeaf("", 0, "empty"))
@@ -125,12 +125,12 @@ func TestAddToFanNode(t *testing.T) {
 			assert.Equal(t, tcase.ExpBitmap, node.bitpack&actBitmapMask)
 
 			// check if both keys lead to the respective values
-			twig1, _, ok := node.findClosest(key1)
+			twig1, _, ok := findClosest(node, key1)
 			require.True(t, twig1.bitpack&leafBitMask != 0)
 			assert.True(t, ok)
 			assert.Equal(t, "one", getLeafKV(twig1).Val)
 
-			twig2, _, ok := node.findClosest(key2)
+			twig2, _, ok := findClosest(node, key2)
 			require.True(t, twig2.bitpack&leafBitMask != 0)
 			assert.True(t, ok)
 			assert.Equal(t, "two", getLeafKV(twig2).Val)

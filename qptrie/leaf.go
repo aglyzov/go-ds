@@ -4,7 +4,7 @@ import (
 	"unsafe"
 )
 
-func newLeaf(key string, shift int, val interface{}) *Twig {
+func newLeaf(key string, shift int, val any) *Twig {
 	leaf := Twig{
 		bitpack: leafBitMask | uint64(shift)<<nibShiftOffset,
 		pointer: unsetPtr, // it is forbidden to have a nil Pointer
@@ -20,7 +20,7 @@ func newLeaf(key string, shift int, val interface{}) *Twig {
 	return &leaf
 }
 
-func addToLeaf(leaf *Twig, key string, val interface{}) {
+func addToLeaf(leaf *Twig, key string, val any) {
 	// find the longest common key prefix
 	var (
 		shift  = int(leaf.bitpack & nibShiftMask >> nibShiftOffset)
@@ -35,7 +35,8 @@ func addToLeaf(leaf *Twig, key string, val interface{}) {
 		minLen = curLen
 	}
 
-	for ; num < minLen && key[num] == kv.Key[num]; num++ {
+	for num < minLen && key[num] == kv.Key[num] {
+		num++
 	}
 
 	// replace the leaf with a node
@@ -116,17 +117,17 @@ func getLeafKV(leaf *Twig) KV {
 
 	return KV{
 		Key: extractKey(leaf.bitpack),
-		Val: *(*interface{})(leaf.pointer),
+		Val: *(*any)(leaf.pointer),
 	}
 }
 
-func setLeafValue(leaf *Twig, val interface{}) interface{} {
-	var old interface{}
+func setLeafValue(leaf *Twig, val any) any {
+	var old any
 
 	switch {
 	case leaf.bitpack&embKeyBitMask != 0:
 		// embedded leaf
-		old = *(*interface{})(leaf.pointer)
+		old = *(*any)(leaf.pointer)
 		leaf.pointer = unsafe.Pointer(&val)
 
 	default:

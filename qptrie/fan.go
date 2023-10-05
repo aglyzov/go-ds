@@ -26,7 +26,7 @@ func newFanNode(nibShift, nibSize, pfxSize int, pfx uint32) *Twig {
 	}
 }
 
-func addToFanNode(node *Twig, key string, val interface{}) {
+func addToFanNode(node *Twig, key string, val any) {
 	var (
 		bitpack = node.bitpack
 		shift   = int(bitpack & nibShiftMask >> nibShiftOffset)
@@ -120,9 +120,9 @@ func addToFanNode(node *Twig, key string, val interface{}) {
 
 	var (
 		mask     = uint64(1) << nib
+		total    = bits.OnesCount64(bitmap)
 		idx      = bits.OnesCount64(bitmap & (mask - 1))
 		leaf     = newLeaf(key, shift, val)
-		total    = bits.OnesCount64(bitmap)
 		curTwigs = (*(*[bitmapWidthMax]Twig)(node.pointer))[:total]
 		newTwigs = make([]Twig, total+1)
 	)

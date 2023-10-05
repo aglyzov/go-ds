@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v6"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,7 +23,7 @@ func TestGet(t *testing.T) {
 
 	for _, tcase := range []*struct {
 		Key    string
-		ExpVal interface{}
+		ExpVal any
 		ExpOK  bool
 	}{
 		{"", nil, false},
@@ -56,12 +55,12 @@ func TestSet_Get(t *testing.T) {
 
 	var (
 		qp    = New()
-		state = map[string]interface{}{}
+		state = map[string]any{}
 	)
 
 	for _, tcase := range []*struct {
 		Key string
-		Val interface{}
+		Val any
 	}{
 		{"", 1},
 		{"\x00", 2},
@@ -111,7 +110,7 @@ func TestSet_FakeData(t *testing.T) {
 
 	var (
 		qp    = New()
-		state = map[string]interface{}{}
+		state = map[string]any{}
 		fake  = gofakeit.New(seed)
 		ready bool
 	)

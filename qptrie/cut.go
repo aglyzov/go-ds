@@ -44,7 +44,7 @@ func newCutNode(cut string, shift int, twig *Twig) *Twig {
 //	|........cut....!.......|....next....|
 //	                * diff bit
 //	|........key....!..............|
-func addToCutNode(node *Twig, key string, val interface{}) {
+func addToCutNode(node *Twig, key string, val any) {
 	// find the longest common key prefix
 	var (
 		shift     = int(node.bitpack & nibShiftMask >> nibShiftOffset)

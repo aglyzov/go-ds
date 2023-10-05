@@ -38,9 +38,10 @@ const (
 
 var unsetPtr = unsafe.Pointer(new(struct{}))
 
+// KV represents a key-value pair
 type KV struct {
 	Key string
-	Val interface{}
+	Val any
 }
 
 // Twig is a uniform element of a QP-Trie (meaning either a node or a leaf).
@@ -49,6 +50,7 @@ type Twig struct {
 	pointer unsafe.Pointer // should always point at something allocated!
 }
 
+// New returns a new Trie optionally initialized with the given key-value pairs.
 func New(init ...KV) *Twig {
 	qp := newFanNode(0, nibSizeMax, 0, 0)
 
@@ -59,16 +61,18 @@ func New(init ...KV) *Twig {
 	return qp
 }
 
-func (qp *Twig) Get(key string) (interface{}, bool) {
-	if closest, _, ok := qp.findClosest(key); ok {
+// Get returns a value associated with the given key.
+func (qp *Twig) Get(key string) (any, bool) {
+	if closest, _, ok := findClosest(qp, key); ok {
 		return getLeafKV(closest).Val, true
 	}
 
 	return nil, false
 }
 
-func (qp *Twig) Set(key string, val interface{}) (interface{}, bool) {
-	closest, key, ok := qp.findClosest(key)
+// Set assigns a value to a key in the given Twig.
+func (qp *Twig) Set(key string, val any) (any, bool) {
+	closest, key, ok := findClosest(qp, key)
 	if ok {
 		// matched exactly - replace the value
 		return setLeafValue(closest, val), true
@@ -92,7 +96,7 @@ func (qp *Twig) Set(key string, val interface{}) (interface{}, bool) {
 	return nil, false
 }
 
-func (qp *Twig) findClosest(key string) (*Twig, string, bool) {
+func findClosest(qp *Twig, key string) (*Twig, string, bool) {
 	// walk along a common prefix
 	var (
 		nib   byte // current nibble
@@ -104,24 +108,24 @@ func (qp *Twig) findClosest(key string) (*Twig, string, bool) {
 	for cur.bitpack&leafBitMask == 0 {
 		if cur.bitpack&cutBitMask != 0 {
 			//
-			// -- cur is a cut-node --
+			// -- cut-node --
 			//
-			cut := getCutNodeKey(cur)
+			chunk := getCutNodeKey(cur)
 
-			if !strings.HasPrefix(key, cut) {
+			if !strings.HasPrefix(key, chunk) {
 				// the cut doesn't match
 				return cur, key, false
 			}
 
 			// jump to the next twig
 			cur = getCutNodeTwig(cur)
-			key = key[len(cut):]
+			key = key[len(chunk):]
 			shift = 0 // reset
 
 			continue
 		}
 
-		// -- cur is a fan-node --
+		// -- fan-node --
 		var (
 			bitpack     = cur.bitpack
 			nibSize     = int(bitpack & nibSizeMask >> nibSizeOffset)
@@ -166,7 +170,7 @@ func (qp *Twig) findClosest(key string) (*Twig, string, bool) {
 		)
 
 		if bitmap&mask == 0 {
-			// the node doesn't have the nibble
+			// the node doesn't have a nibble
 			return cur, prevKey, false
 		}
 

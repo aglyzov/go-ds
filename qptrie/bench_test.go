@@ -9,7 +9,7 @@ import (
 func BenchmarkGoMap_Set(b *testing.B) {
 	var (
 		keys = getKeys(b.N)
-		m    = make(map[string]interface{})
+		m    = make(map[string]any)
 	)
 
 	b.ResetTimer()
@@ -22,7 +22,7 @@ func BenchmarkGoMap_Set(b *testing.B) {
 func BenchmarkGoMap_Get(b *testing.B) {
 	var (
 		keys = getKeys(b.N)
-		m    = make(map[string]interface{})
+		m    = make(map[string]any)
 	)
 
 	for i, key := range keys {
