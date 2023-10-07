@@ -16,12 +16,12 @@ func TestAddToFanNode(t *testing.T) {
 		Shift      int
 		PfxSize    int
 		NibSize    int
-		Pfx        uint32
+		Pfx        uint64
 		Key1, Key2 string
 		ExpShift   int
 		ExpPfxSize int
 		ExpNibSize int
-		ExpPfx     uint32
+		ExpPfx     uint64
 		ExpBitmap  uint64
 	}{
 		{
@@ -101,8 +101,8 @@ func TestAddToFanNode(t *testing.T) {
 
 			require.Zero(t, node.bitpack&leafBitMask, "should be a fan-node, not leaf")
 
-			addToFanNode(node, key1, "one")
-			addToFanNode(node, key2, "two")
+			addToFanNode(node, key1, "one", true)
+			addToFanNode(node, key2, "two", true)
 
 			require.Zero(t, node.bitpack&leafBitMask, "should be a fan-node, not leaf")
 

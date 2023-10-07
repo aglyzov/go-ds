@@ -14,26 +14,26 @@ const (
 	nibShiftOffset   = 59 // 3-bit number: current nibble's bit offset in to a byte
 	embKeySizeOffset = 56 // 3-bit number: number of embedded key bytes [1..7]
 	nibSizeOffset    = 56 // 3-bit number: size of a nibble in bits [1..5]
-	pfxSizeOffset    = 51 // 5-bit number: size of a stored prefix in bits [0..31]
+	pfxSizeOffset    = 50 // 6-bit number: size of a stored prefix in bits [0..31]
 
 	nibShiftWidth   = 3
 	embKeySizeWidth = 3
 	nibSizeWidth    = 3
-	pfxSizeWidth    = 5
+	pfxSizeWidth    = 6
 	bitmapWidthMax  = 33
 
 	nibShiftMax   = (1 << nibShiftWidth) - 1   // max nibble shift 0b_111 == 7
 	embKeySizeMax = (1 << embKeySizeWidth) - 1 // max amount of bytes to be embedded 0b_111 == 7
 	nibSizeMax    = 5                          // largest nibble size in bits
-	pfxSizeMax    = (1 << pfxSizeWidth) - 1    // largest prefix size in bits 0b_11111 == 31
+	pfxSizeMax    = 47                         // largest prefix size in bits (when nib is 1 bit)
 
-	leafBitMask    uint64 = 1 << leafBitOffset                         // 0b_10000000000000..0
-	embKeyBitMask  uint64 = 1 << embKeyBitOffset                       // 0b_01000000000000..0
-	cutBitMask     uint64 = 1 << cutBitOffset                          // 0b_01000000000000..0
-	nibShiftMask   uint64 = nibShiftMax << nibShiftOffset              // 0b_00111000000000..0
-	embKeySizeMask uint64 = embKeySizeMax << embKeySizeOffset          // 0b_00000111000000..0
-	nibSizeMask    uint64 = ((1 << nibSizeWidth) - 1) << nibSizeOffset // 0b_00000111000000..0
-	pfxSizeMask    uint64 = pfxSizeMax << pfxSizeOffset                // 0b_00000000111110..0
+	leafBitMask    uint64 = 1 << leafBitOffset                         // 0b_100000000000000..0
+	embKeyBitMask  uint64 = 1 << embKeyBitOffset                       // 0b_010000000000000..0
+	cutBitMask     uint64 = 1 << cutBitOffset                          // 0b_010000000000000..0
+	nibShiftMask   uint64 = nibShiftMax << nibShiftOffset              // 0b_001110000000000..0
+	embKeySizeMask uint64 = embKeySizeMax << embKeySizeOffset          // 0b_000001110000000..0
+	nibSizeMask    uint64 = ((1 << nibSizeWidth) - 1) << nibSizeOffset // 0b_000001110000000..0
+	pfxSizeMask    uint64 = ((1 << pfxSizeWidth) - 1) << pfxSizeOffset // 0b_000000001111110..0
 )
 
 var unsetPtr = unsafe.Pointer(new(struct{}))
@@ -80,10 +80,10 @@ func (qp *Twig) Set(key string, val any) (any, bool) {
 
 	if closest.bitpack&leafBitMask == 0 {
 		// it's a node
-		switch {
-		case closest.bitpack&cutBitMask == 0:
+		switch closest.bitpack&cutBitMask == 0 {
+		case true:
 			// it's a fan-node
-			addToFanNode(closest, key, val)
+			addToFanNode(closest, key, val, true)
 		default:
 			// it's a cut-node
 			addToCutNode(closest, key, val)
@@ -161,8 +161,9 @@ func findClosest(qp *Twig, key string) (*Twig, string, bool) {
 			}
 		}
 
+		// TODO: switch on nibSize and call the fast-path routines (take5Bits, ...)
 		nib64, key, shift = takeNBits(key, shift, nibSize)
-		nib = byte(nib64 & 0xFF)
+		nib = byte(nib64)
 
 		var (
 			mask = uint64(1) << nib

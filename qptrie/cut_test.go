@@ -97,7 +97,7 @@ func TestAddToCutNode(t *testing.T) {
 				twig = newCutNode(key1, tcase.Shift, fan)
 			)
 
-			addToFanNode(fan, "", "one")
+			addToFanNode(fan, "", "one", true)
 
 			require.Zero(t, twig.bitpack&leafBitMask, "should be a node, not a leaf")
 

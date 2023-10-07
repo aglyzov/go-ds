@@ -5,10 +5,10 @@ import (
 	"unsafe"
 )
 
-func newFanNode(nibShift, nibSize, pfxSize int, pfx uint32) *Twig {
+// newFanNode returns an empty Fan node.
+func newFanNode(nibShift, nibSize, pfxSize int, pfx uint64) *Twig {
 	bitpack := (uint64(nibShift)<<nibShiftOffset)&nibShiftMask |
-		(uint64(nibSize)<<nibSizeOffset)&nibSizeMask |
-		(uint64(pfxSize)<<pfxSizeOffset)&pfxSizeMask
+		(uint64(nibSize)<<nibSizeOffset)&nibSizeMask
 
 	if pfxSize > 0 {
 		// embed the prefix
@@ -17,7 +17,8 @@ func newFanNode(nibShift, nibSize, pfxSize int, pfx uint32) *Twig {
 			pfxOffset = pfxSizeOffset - pfxSize
 		)
 
-		bitpack |= uint64(pfx) & pfxMask << pfxOffset
+		bitpack |= (uint64(pfxSize)<<pfxSizeOffset)&pfxSizeMask |
+			pfx&pfxMask<<pfxOffset
 	}
 
 	return &Twig{
@@ -26,11 +27,13 @@ func newFanNode(nibShift, nibSize, pfxSize int, pfx uint32) *Twig {
 	}
 }
 
-func addToFanNode(node *Twig, key string, val any) {
+func addToFanNode(node *Twig, key string, val any, replaceEmpty bool) {
 	var (
-		bitpack = node.bitpack
-		shift   = int(bitpack & nibShiftMask >> nibShiftOffset)
-		pfxSize = int(bitpack & pfxSizeMask >> pfxSizeOffset)
+		bitpack   = node.bitpack
+		shift     = int(bitpack & nibShiftMask >> nibShiftOffset)
+		pfxSize   = int(bitpack & pfxSizeMask >> pfxSizeOffset)
+		prevShift = shift
+		prevKey   = key
 	)
 
 	if pfxSize > 0 {
@@ -39,24 +42,23 @@ func addToFanNode(node *Twig, key string, val any) {
 			pfxOffset = pfxSizeOffset - pfxSize
 			pfxMask   = (uint64(1) << pfxSize) - 1
 			pfx       = (bitpack >> pfxOffset) & pfxMask
-			prevShift = shift
-			prevKey   = key
-			nib64     uint64
 		)
 
-		nib64, key, shift = takeNBits(key, shift, pfxSize)
+		nib64, trimKey, trimShift := takeNBits(key, shift, pfxSize)
 
-		if pfx != nib64 {
-			//if pfx != nib64 {
+		if pfx == nib64 {
+			key = trimKey
+			shift = trimShift
+		} else {
 			// the prefix doesn't match the key - insert a fan-node before the old one:
 			//
-			//   old-prefix == matching-part + unmatched-part
+			//   old-prefix == "matched" + "unmatched"
 			//
-			//   matching-part::new-fan-node -> unmatched-part::old-fan-node
+			//   [new-fan:"matched"] --> [old-fan:"unmatched"]
 			//
 			var (
-				diff       = uint32(pfx^nib64) | (1 << pfxSize)
-				newPfxSize = bits.TrailingZeros32(diff) // number of matching bits
+				diff       = (pfx ^ nib64) | (1 << pfxSize)
+				newPfxSize = bits.TrailingZeros64(diff) // number of matching bits
 				newNibSize = pfxSize - newPfxSize
 			)
 
@@ -67,7 +69,7 @@ func addToFanNode(node *Twig, key string, val any) {
 			}
 
 			// adjust the old node's prefix and shift
-			oldPfxSize := pfxSize - pfxSize
+			oldPfxSize := pfxSize - newPfxSize // TODO: check
 
 			if newNibSize > nibSizeMax {
 				oldPfxSize += newNibSize - nibSizeMax
@@ -84,7 +86,7 @@ func addToFanNode(node *Twig, key string, val any) {
 
 			// insert a fan-node before the old one
 			var (
-				newPfx = uint32(pfx) & ((1 << newPfxSize) - 1)
+				newPfx = pfx & ((1 << newPfxSize) - 1)
 				newFan = newFanNode(prevShift, newNibSize, newPfxSize, newPfx)
 				newNib = (pfx >> newPfxSize) & ((1 << newNibSize) - 1)
 			)
@@ -97,6 +99,9 @@ func addToFanNode(node *Twig, key string, val any) {
 			// trim the key and adjust current shift
 			_, key, shift = takeNBits(prevKey, prevShift, newPfxSize)
 
+			prevKey = key
+			prevShift = shift
+
 			bitpack = node.bitpack
 		}
 	}
@@ -108,9 +113,9 @@ func addToFanNode(node *Twig, key string, val any) {
 		bitmap      = bitpack & bitmapMask
 	)
 
-	if bitmap == 0 {
+	if bitmap == 0 && replaceEmpty {
 		// node is empty - replace with a leaf
-		*node = *newLeaf(key, shift, val)
+		*node = *newLeaf(prevKey, prevShift, val)
 
 		return
 	}
@@ -119,18 +124,34 @@ func addToFanNode(node *Twig, key string, val any) {
 	nib := byte(nib64 & 0xFF)
 
 	var (
-		mask     = uint64(1) << nib
+		bit      = uint64(1) << nib
 		total    = bits.OnesCount64(bitmap)
-		idx      = bits.OnesCount64(bitmap & (mask - 1))
+		idx      = bits.OnesCount64(bitmap & (bit - 1))
 		leaf     = newLeaf(key, shift, val)
 		curTwigs = (*(*[bitmapWidthMax]Twig)(node.pointer))[:total]
 		newTwigs = make([]Twig, total+1)
+		//
+		// TODO/IDEA: allocate more than one at a time and remember the number of empty slots
+		//            in the bitpack
 	)
 
-	copy(newTwigs[:idx], curTwigs[:idx])
-	newTwigs[idx] = *leaf
-	copy(newTwigs[idx+1:], curTwigs[idx:])
+	// e.g. bitmap: 01011
+	//                ^
+	//      bit      : 00100
+	//      total    : 3
+	//      idx      : 2     (OnesCount(00011))
+	//      curTwigs : [3]Twig{<0>, <1>, <3>}
 
-	node.bitpack |= uint64(mask)
+	if idx > 0 {
+		copy(newTwigs[:idx], curTwigs[:idx])
+	}
+
+	newTwigs[idx] = *leaf
+
+	if idx < total {
+		copy(newTwigs[idx+1:], curTwigs[idx:])
+	}
+
+	node.bitpack |= bit
 	node.pointer = unsafe.Pointer(&newTwigs[0])
 }

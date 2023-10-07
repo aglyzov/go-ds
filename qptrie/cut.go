@@ -204,7 +204,7 @@ func addToCutNode(node *Twig, key string, val any) {
 
 			nib, cut, shift = takeNBits(cut, nibShift, nibSize)
 
-			*node = *newFanNode(shift, nibSize, pfxSize, uint32(pfx))
+			*node = *newFanNode(shift, nibSize, pfxSize, pfx)
 
 			node.bitpack |= uint64(1) << nib
 			// node.pointer = // TODO: add nib -> pointer to the new fan-node

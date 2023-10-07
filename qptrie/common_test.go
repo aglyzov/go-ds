@@ -58,3 +58,10 @@ func reverseString(s string) string {
 	}
 	return string(runes)
 }
+
+// stringToUint64 converts bytes of a string s to a uint64 value. Assumes len(s) <= 8.
+func stringToUint64(s string) uint64 {
+	nib, _, _ := takeNBits(s, 0, len(s)<<byteShift)
+
+	return nib
+}
