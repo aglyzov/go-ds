@@ -51,6 +51,7 @@ func TestGet(t *testing.T) {
 		emptyLeaf    = newLeaf(emptyKey, 0, value1)
 		embeddedLeaf = newLeaf(embeddedKey, 0, value1)
 		regularLeaf  = newLeaf(regularKey, 0, value1)
+		embeddedCut  = newCutNode(embeddedKey, 0, regularFan)
 	)
 
 	addToFanNode(regularFan, emptyKey, value1, false)
@@ -114,6 +115,17 @@ func TestGet(t *testing.T) {
 		{"regular leaf, upper-case regular key", regularLeaf, upperCaseKey, nil, false},
 		{"regular leaf, longer key", regularLeaf, longerKey, nil, false},
 		{"regular leaf, unknown key", regularLeaf, unknownKey, nil, false},
+
+		{"embedded cut, empty key", embeddedCut, emptyKey, nil, false},
+		{"embedded cut, embedded key", embeddedCut, embeddedKey, value1, true},
+		{"embedded cut, zero key", embeddedCut, zeroKey, nil, false},
+		{"embedded cut, regular key", embeddedCut, regularKey, nil, false},
+		{"embedded cut, embedded key + regular key", embeddedCut, embeddedKey + regularKey, value2, true},
+		{"embedded cut, longer embedded key + regular key", embeddedCut, longerEmbKey + regularKey, nil, false},
+		{"embedded cut, embedded key + longer regular key", embeddedCut, embeddedKey + longerKey, nil, false},
+		{"embedded cut, upper-case regular key", embeddedCut, upperCaseKey, nil, false},
+		{"embedded cut, longer key", embeddedCut, longerKey, nil, false},
+		{"embedded cut, unknown key", embeddedCut, unknownKey, nil, false},
 	} {
 		tcase := tcase
 

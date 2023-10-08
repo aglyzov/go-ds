@@ -23,12 +23,14 @@
 //     [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    56:55-00     ]
 //     <1:leaf> <1:emb> <SSS:shift> <NNN:emb-len> <KKK...KKK:emb-key>
 //
+//     emb-len is a number of embedded key bytes (including the shift bits).
+//
 //   - Fan-node:
 //
 //     [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    6:55-50    ] [  49-..  ] [ 32|16|08|04|02-00 ]
 //     <0:node> <0:fan> <SSS:shift> <NNN:nib-len> <PPPPPP:pfx-size> <K...K:pfx> <BBB...BBBB:twig-bitmap>
 //
-//     pfx-size is [0..47|45|41|33|17] (max depends on nib-len)
+//     pfx-size is a number of embedded prefix bits - [0..47|45|41|33|17] (max depends on nib-len)
 //
 //     nib-len is [1|2|3|4|5]
 //
@@ -52,6 +54,8 @@
 //     [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    56:55-00     ]
 //     <0:node> <1:cut> <SSS:shift> <NNN:emb-len> [KKK...KKK:emb-key]
 //
+//     emb-len is a number of embedded key bytes (including the shift bits).
+//
 // Pointer variants:
 // ----------------
 //
@@ -64,13 +68,13 @@
 // Example trie:
 // ------------
 //
-//			              ,-- [leaf:"var/log/syslog"]
-//	                  |
-//		[fan:pfx="/"] --+-- [cut:"home/"] -- [fan:pfx="user1/"] -- [leaf:"tmp/1.txt"]
-//		                |
-//		                |                               ,-- [leaf:"bash"]
-//			              `-- [cut:"usr/bin/"] -- [fan] --+
-//		                                                `-- [leaf:"vim"]
+//	                ,-- [leaf:"var/log/syslog"]
+//	                |
+//	[fan:pfx="/"] --+-- [cut:"home/"] -- [fan:pfx="user1/"] -- [leaf:"tmp/1.txt"]
+//	                |
+//	                |                               ,-- [leaf:"bash"]
+//	                `-- [cut:"usr/bin/"] -- [fan] --+
+//	                                                `-- [leaf:"vim"]
 //
 // The trie above contains the following keys:
 //
