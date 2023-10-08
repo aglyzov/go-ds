@@ -27,14 +27,15 @@ func TestGet(t *testing.T) {
 	t.Parallel()
 
 	const (
+		prefix          = "key-"
 		emptyKey        = ""
-		embeddedKey     = "key-emb" // max embedded key size is 7 bytes
+		embeddedKey     = prefix + "emb" // max embedded key size is 7 bytes
 		upperCaseEmbKey = "KEY-EMB"
-		longerEmbKey    = "key-emb\x00"
-		regularKey      = "key-regular"
-		longerKey       = "key-regular\x00"
+		longerEmbKey    = prefix + "emb\x00"
+		regularKey      = prefix + "regular"
+		longerKey       = prefix + "regular\x00"
 		upperCaseKey    = "KEY-REGULAR"
-		unknownKey      = "key-unknown"
+		unknownKey      = prefix + "unknown"
 		zeroKey         = "\x00"
 		doubleZeroKey   = zeroKey + zeroKey
 		tripleZeroKey   = zeroKey + zeroKey + zeroKey
@@ -45,8 +46,8 @@ func TestGet(t *testing.T) {
 	var (
 		emptyFan     = newFanNode(0, 5, 0, 0)
 		regularFan   = newFanNode(0, 4, 0, 0)
-		prefixFan    = newFanNode(0, 3, 4*byteWidth, stringToUint64("key-"))
-		zeroPfxFan   = newFanNode(0, 5, 2*byteWidth, stringToUint64(doubleZeroKey))
+		prefixFan    = newFanNode(0, 3, len(prefix)*byteWidth, stringToUint64(prefix))
+		zeroPfxFan   = newFanNode(0, 5, len(doubleZeroKey)*byteWidth, stringToUint64(doubleZeroKey))
 		emptyLeaf    = newLeaf(emptyKey, 0, value1)
 		embeddedLeaf = newLeaf(embeddedKey, 0, value1)
 		regularLeaf  = newLeaf(regularKey, 0, value1)
@@ -55,7 +56,8 @@ func TestGet(t *testing.T) {
 	addToFanNode(regularFan, emptyKey, value1, false)
 	addToFanNode(regularFan, regularKey, value2, false)
 
-	addToFanNode(prefixFan, regularKey, value1, false)
+	addToFanNode(prefixFan, prefix, value1, false)
+	addToFanNode(prefixFan, regularKey, value2, false)
 
 	addToFanNode(zeroPfxFan, doubleZeroKey, value1, false)
 	addToFanNode(zeroPfxFan, tripleZeroKey, value2, false)
@@ -81,7 +83,8 @@ func TestGet(t *testing.T) {
 		{"prefix fan, empty key", prefixFan, emptyKey, nil, false},
 		{"prefix fan, zero key", prefixFan, zeroKey, nil, false},
 		{"prefix fan, unknown key", prefixFan, unknownKey, nil, false},
-		{"prefix fan, regular key", prefixFan, regularKey, value1, true},
+		{"prefix fan, prefix only", prefixFan, prefix, value1, true},
+		{"prefix fan, regular key", prefixFan, regularKey, value2, true},
 		{"prefix fan, upper-case key", prefixFan, upperCaseKey, nil, false},
 		{"prefix fan, longer key", prefixFan, longerKey, nil, false},
 
