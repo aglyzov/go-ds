@@ -44,18 +44,38 @@ func addToFanNode(node *Twig, key string, val any, replaceEmpty bool) {
 			pfx       = (bitpack >> pfxOffset) & pfxMask
 		)
 
+		// TODO: check if the key is smaller than the prefix
+		// 1) key is smaller and all bits of the key match:
+		//
+		//	|...........prefix.............|....nib....|
+		//	|...........key...........|
+		//
+
 		nib64, trimKey, trimShift := takeNBits(key, shift, pfxSize)
 
 		if pfx == nib64 {
-			key = trimKey
-			shift = trimShift
+			key, shift = trimKey, trimShift
 		} else {
-			// the prefix doesn't match the key - insert a fan-node before the old one:
+			// The prefix doesn't match the key - insert a fan-node before the old one:
 			//
 			//   old-prefix == "matched" + "unmatched"
 			//
 			//   [new-fan:"matched"] --> [old-fan:"unmatched"]
 			//
+			// Possible scenarios:
+			// ------------------
+			//
+			// there is at least one bit of difference (no matter the key size):
+			//
+			//	|........prefix..!.......|....nib....|
+			//	                 * diff bit
+			//	|........key.....!..|
+			//
+			//  or
+			//
+			//	|........prefix..!.......|...nib...|
+			//	                 * diff bit
+			//	|........key.....!..............|
 			var (
 				diff       = (pfx ^ nib64) | (1 << pfxSize)
 				newPfxSize = bits.TrailingZeros64(diff) // number of matching bits
@@ -63,7 +83,7 @@ func addToFanNode(node *Twig, key string, val any, replaceEmpty bool) {
 			)
 
 			for newNibSize < nibSizeMax && newPfxSize > 0 {
-				// borrow some bits from a matching part to make a new fan-node more deep
+				// borrow some bits from a matching part to make a new fan-node wider
 				newPfxSize--
 				newNibSize++
 			}

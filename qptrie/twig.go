@@ -96,6 +96,10 @@ func (qp *Twig) Set(key string, val any) (any, bool) {
 	return nil, false
 }
 
+// TODO/IDEA:
+//
+//	also return a matched part or a number of matched bits of a prefix,
+//	this is to skip unnecessary comparisons in addTo* routines.
 func findClosest(qp *Twig, key string) (*Twig, string, bool) {
 	// walk along a common prefix
 	var (
@@ -147,9 +151,14 @@ func findClosest(qp *Twig, key string) (*Twig, string, bool) {
 
 		if pfxSize > 0 {
 			// the fan-node has a prefix - need to check if it matches the key
+			if len(key)<<byteShift-shift < pfxSize {
+				// the key is smaller than the prefix
+				return cur, prevKey, false
+			}
+
 			var (
 				pfxOffset = pfxSizeOffset - pfxSize
-				pfxMask   = (uint64(1) << pfxSize) - 1
+				pfxMask   = uint64(1)<<pfxSize - 1
 				pfx       = (bitpack >> pfxOffset) & pfxMask
 			)
 

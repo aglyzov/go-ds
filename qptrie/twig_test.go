@@ -36,22 +36,29 @@ func TestGet(t *testing.T) {
 		upperCaseKey    = "KEY-REGULAR"
 		unknownKey      = "key-unknown"
 		zeroKey         = "\x00"
-		value           = 123
+		doubleZeroKey   = zeroKey + zeroKey
+		tripleZeroKey   = zeroKey + zeroKey + zeroKey
+		value1          = 123
+		value2          = 321
 	)
 
 	var (
 		emptyFan     = newFanNode(0, 5, 0, 0)
 		regularFan   = newFanNode(0, 4, 0, 0)
 		prefixFan    = newFanNode(0, 3, 4*byteWidth, stringToUint64("key-"))
-		emptyLeaf    = newLeaf(emptyKey, 0, value)
-		embeddedLeaf = newLeaf(embeddedKey, 0, value)
-		regularLeaf  = newLeaf(regularKey, 0, value)
+		zeroPfxFan   = newFanNode(0, 5, 2*byteWidth, stringToUint64(doubleZeroKey))
+		emptyLeaf    = newLeaf(emptyKey, 0, value1)
+		embeddedLeaf = newLeaf(embeddedKey, 0, value1)
+		regularLeaf  = newLeaf(regularKey, 0, value1)
 	)
 
-	addToFanNode(regularFan, emptyKey, value, false)
-	addToFanNode(regularFan, regularKey, value, false)
+	addToFanNode(regularFan, emptyKey, value1, false)
+	addToFanNode(regularFan, regularKey, value2, false)
 
-	addToFanNode(prefixFan, regularKey, value, false)
+	addToFanNode(prefixFan, regularKey, value1, false)
+
+	addToFanNode(zeroPfxFan, doubleZeroKey, value1, false)
+	addToFanNode(zeroPfxFan, tripleZeroKey, value2, false)
 
 	for _, tcase := range []*struct {
 		Name   string
@@ -63,30 +70,44 @@ func TestGet(t *testing.T) {
 		{"empty fan, empty key", emptyFan, emptyKey, nil, false},
 		{"empty fan, zero key", emptyFan, zeroKey, nil, false},
 		{"empty fan, unknown key", emptyFan, unknownKey, nil, false},
-		{"regular fan, empty key", regularFan, emptyKey, value, true},
+
+		{"regular fan, empty key", regularFan, emptyKey, value1, true},
 		{"regular fan, zero key", regularFan, zeroKey, nil, false},
 		{"regular fan, unknown key", regularFan, unknownKey, nil, false},
-		{"regular fan, regular key", regularFan, regularKey, value, true},
+		{"regular fan, regular key", regularFan, regularKey, value2, true},
 		{"regular fan, upper-case key", regularFan, upperCaseKey, nil, false},
 		{"regular fan, longer key", regularFan, longerKey, nil, false},
+
 		{"prefix fan, empty key", prefixFan, emptyKey, nil, false},
 		{"prefix fan, zero key", prefixFan, zeroKey, nil, false},
 		{"prefix fan, unknown key", prefixFan, unknownKey, nil, false},
-		{"prefix fan, regular key", prefixFan, regularKey, value, true},
+		{"prefix fan, regular key", prefixFan, regularKey, value1, true},
 		{"prefix fan, upper-case key", prefixFan, upperCaseKey, nil, false},
 		{"prefix fan, longer key", prefixFan, longerKey, nil, false},
-		{"empty leaf, empty key", emptyLeaf, emptyKey, value, true},
+
+		{"zero-prefix fan, empty key", zeroPfxFan, emptyKey, nil, false},
+		{"zero-prefix fan, zero key", zeroPfxFan, zeroKey, nil, false},
+		{"zero-prefix fan, double-zero key", zeroPfxFan, doubleZeroKey, value1, true},
+		{"zero-prefix fan, triple-zero key", zeroPfxFan, tripleZeroKey, value2, true},
+		{"zero-prefix fan, unknown key", zeroPfxFan, unknownKey, nil, false},
+		{"zero-prefix fan, regular key", zeroPfxFan, regularKey, nil, false},
+		{"zero-prefix fan, upper-case key", zeroPfxFan, upperCaseKey, nil, false},
+		{"zero-prefix fan, longer key", zeroPfxFan, longerKey, nil, false},
+
+		{"empty leaf, empty key", emptyLeaf, emptyKey, value1, true},
 		{"empty leaf, zero key", emptyLeaf, zeroKey, nil, false},
 		{"empty leaf, unknown key", emptyLeaf, unknownKey, nil, false},
+
 		{"embedded leaf, empty key", embeddedLeaf, emptyKey, nil, false},
 		{"embedded leaf, zero key", embeddedLeaf, zeroKey, nil, false},
-		{"embedded leaf, embedded key", embeddedLeaf, embeddedKey, value, true},
+		{"embedded leaf, embedded key", embeddedLeaf, embeddedKey, value1, true},
 		{"embedded leaf, upper-case embedded key", embeddedLeaf, upperCaseEmbKey, nil, false},
 		{"embedded leaf, longer embedded key", embeddedLeaf, longerEmbKey, nil, false},
 		{"embedded leaf, unknown key", embeddedLeaf, unknownKey, nil, false},
+
 		{"regular leaf, empty key", regularLeaf, emptyKey, nil, false},
 		{"regular leaf, zero key", regularLeaf, zeroKey, nil, false},
-		{"regular leaf, regular key", regularLeaf, regularKey, value, true},
+		{"regular leaf, regular key", regularLeaf, regularKey, value1, true},
 		{"regular leaf, upper-case regular key", regularLeaf, upperCaseKey, nil, false},
 		{"regular leaf, longer key", regularLeaf, longerKey, nil, false},
 		{"regular leaf, unknown key", regularLeaf, unknownKey, nil, false},
