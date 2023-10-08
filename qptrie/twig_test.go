@@ -23,6 +23,31 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, unsetPtr, qp.pointer)
 }
 
+func TestString(t *testing.T) {
+	t.Parallel()
+
+	for _, tcase := range []*struct {
+		Twig     *Twig
+		Expected string
+	}{
+		{newLeaf("regular-key", 0, 123), `<qptrie|Leaf|sh:0|"regular-key">`},
+		{newLeaf("shifted-key", 7, 456), `<qptrie|Leaf|sh:7|"shifted-key">`},
+		{newLeaf("emb-key", 3, 789), `<qptrie|Leaf|emb|sh:3|"emb-key">`},
+		{newCutNode("regular-key", 2, new(Twig)), `<qptrie|Cut|sh:2|"regular-key">`},
+		{newCutNode("emb-key", 1, new(Twig)), `<qptrie|Cut|emb|sh:1|"emb-key">`},
+		{newFanNode(5, 4, 0, 0), `<qptrie|Fan|sh:5|4bit|bmp:00000000000000000>`},
+		{newFanNode(0, 3, 12, 0b0101_01100100), `<qptrie|Fan|sh:0|pfx:010101100100|3bit|bmp:000000000>`},
+	} {
+		tcase := tcase
+
+		t.Run(tcase.Expected, func(t *testing.T) {
+			actual := tcase.Twig.String()
+
+			assert.Equal(t, tcase.Expected, actual)
+		})
+	}
+}
+
 func TestGet(t *testing.T) {
 	t.Parallel()
 

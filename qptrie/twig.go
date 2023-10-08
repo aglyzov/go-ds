@@ -1,7 +1,9 @@
 package qptrie
 
 import (
+	"fmt"
 	"math/bits"
+	"strconv"
 	"strings"
 	"unsafe"
 )
@@ -27,13 +29,13 @@ const (
 	nibSizeMax    = 5                          // largest nibble size in bits
 	pfxSizeMax    = 47                         // largest prefix size in bits (when nib is 1 bit)
 
-	leafBitMask    uint64 = 1 << leafBitOffset                         // 0b_100000000000000..0
-	embKeyBitMask  uint64 = 1 << embKeyBitOffset                       // 0b_010000000000000..0
-	cutBitMask     uint64 = 1 << cutBitOffset                          // 0b_010000000000000..0
-	nibShiftMask   uint64 = nibShiftMax << nibShiftOffset              // 0b_001110000000000..0
-	embKeySizeMask uint64 = embKeySizeMax << embKeySizeOffset          // 0b_000001110000000..0
-	nibSizeMask    uint64 = ((1 << nibSizeWidth) - 1) << nibSizeOffset // 0b_000001110000000..0
-	pfxSizeMask    uint64 = ((1 << pfxSizeWidth) - 1) << pfxSizeOffset // 0b_000000001111110..0
+	leafBitMask    uint64 = 1 << leafBitOffset                     // 0b_100000000000000..0
+	embKeyBitMask  uint64 = 1 << embKeyBitOffset                   // 0b_010000000000000..0
+	cutBitMask     uint64 = 1 << cutBitOffset                      // 0b_010000000000000..0
+	nibShiftMask   uint64 = nibShiftMax << nibShiftOffset          // 0b_001110000000000..0
+	embKeySizeMask uint64 = embKeySizeMax << embKeySizeOffset      // 0b_000001110000000..0
+	nibSizeMask    uint64 = (1<<nibSizeWidth - 1) << nibSizeOffset // 0b_000001110000000..0
+	pfxSizeMask    uint64 = (1<<pfxSizeWidth - 1) << pfxSizeOffset // 0b_000000001111110..0
 )
 
 var unsetPtr = unsafe.Pointer(new(struct{}))
@@ -61,9 +63,91 @@ func New(init ...KV) *Twig {
 	return qp
 }
 
+func (twig *Twig) IsLeaf() bool {
+	return twig.bitpack&leafBitMask != 0
+}
+
+func (twig *Twig) IsNode() bool {
+	return !twig.IsLeaf()
+}
+
+func (twig *Twig) IsCutNode() bool {
+	return twig.IsNode() && twig.bitpack&cutBitMask != 0
+}
+
+func (twig *Twig) IsFanNode() bool {
+	return twig.IsNode() && twig.bitpack&cutBitMask == 0
+}
+
+func (twig *Twig) Shift() int {
+	return int(twig.bitpack & nibShiftMask >> nibShiftOffset)
+}
+
+func (twig *Twig) Bitmap() (uint64, int) {
+	nibSize := twig.bitpack & nibSizeMask >> nibSizeOffset
+	bmpSize := 1<<nibSize + 1
+	bmpMask := uint64(1<<bmpSize) - 1
+
+	return twig.bitpack & bmpMask, bmpSize
+}
+
+func (twig *Twig) String() string {
+	var (
+		b     strings.Builder
+		shift = strconv.Itoa(twig.Shift())
+	)
+
+	b.WriteString("<qptrie|")
+
+	if twig.IsLeaf() {
+		b.WriteString("Leaf")
+		isEmbed := twig.bitpack&embKeyBitMask != 0
+		if isEmbed {
+			b.WriteString("|emb")
+		}
+		b.WriteString("|sh:" + shift)
+		b.WriteString(fmt.Sprintf("|%#v", getLeafKey(twig)))
+	} else if twig.IsCutNode() {
+		b.WriteString("Cut")
+		isEmbed := twig.bitpack&embKeySizeMask != 0
+		if isEmbed {
+			b.WriteString("|emb")
+		}
+		b.WriteString("|sh:" + shift)
+		b.WriteString(fmt.Sprintf("|%#v", getCutNodeKey(twig)))
+	} else {
+		b.WriteString("Fan")
+		b.WriteString("|sh:" + shift)
+		pfxSize := twig.bitpack & pfxSizeMask >> pfxSizeOffset
+		if pfxSize != 0 {
+			var (
+				offset = pfxSizeOffset - pfxSize
+				mask   = uint64(1)<<pfxSize - 1
+				prefix = (twig.bitpack >> offset) & mask
+				format = "|pfx:%0" + strconv.FormatUint(pfxSize, 10) + "b"
+			)
+
+			b.WriteString(fmt.Sprintf(format, prefix))
+		}
+		nibLen := twig.bitpack & nibSizeMask >> nibSizeOffset
+		b.WriteString("|" + strconv.FormatUint(nibLen, 10) + "bit")
+
+		var (
+			bitmap, size = twig.Bitmap()
+			format       = "|bmp:%0" + strconv.Itoa(size) + "b"
+		)
+
+		b.WriteString(fmt.Sprintf(format, bitmap))
+	}
+
+	b.WriteByte('>')
+
+	return b.String()
+}
+
 // Get returns a value associated with the given key.
-func (qp *Twig) Get(key string) (any, bool) {
-	if closest, _, ok := findClosest(qp, key); ok {
+func (twig *Twig) Get(key string) (any, bool) {
+	if closest, _, ok := findClosest(twig, key); ok {
 		return getLeafKV(closest).Val, true
 	}
 
@@ -71,8 +155,8 @@ func (qp *Twig) Get(key string) (any, bool) {
 }
 
 // Set assigns a value to a key in the given Twig.
-func (qp *Twig) Set(key string, val any) (any, bool) {
-	closest, key, ok := findClosest(qp, key)
+func (twig *Twig) Set(key string, val any) (any, bool) {
+	closest, key, ok := findClosest(twig, key)
 	if ok {
 		// matched exactly - replace the value
 		return setLeafValue(closest, val), true
