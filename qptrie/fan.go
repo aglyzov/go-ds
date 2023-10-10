@@ -62,20 +62,13 @@ func addToFanNode(node *Twig, key string, val any, replaceEmpty bool) {
 			//
 			//   [new-fan:"matched"] --> [old-fan:"unmatched"]
 			//
-			// Possible scenarios:
-			// ------------------
 			//
-			// there is at least one bit of difference (no matter the key size):
+			//	{...old-pfx...!.....|..old-nib..}
+			//	              * diff bit
+			//	[.....key.....!.........................]
 			//
-			//	|........prefix..!.......|....nib....|
-			//	                 * diff bit
-			//	|........key.....!..|
+			//  {...new-pfx...|!....} + {.|..old-nib..}
 			//
-			//  or
-			//
-			//	|........prefix..!.......|...nib...|
-			//	                 * diff bit
-			//	|........key.....!..............|
 			var (
 				diff       = (pfx ^ nib64) | (1 << pfxSize)
 				newPfxSize = bits.TrailingZeros64(diff) // number of matching bits
@@ -88,9 +81,9 @@ func addToFanNode(node *Twig, key string, val any, replaceEmpty bool) {
 				newNibSize++
 			}
 
-			// adjust the old node's prefix and shift
-			oldPfxSize := pfxSize - newPfxSize // TODO: check
+			oldPfxSize := pfxSize - (newPfxSize + newNibSize) // TODO: check
 
+			// adjust the old node's prefix and shift
 			if newNibSize > nibSizeMax {
 				oldPfxSize += newNibSize - nibSizeMax
 				newNibSize = nibSizeMax
