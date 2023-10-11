@@ -42,8 +42,8 @@ var unsetPtr = unsafe.Pointer(new(struct{}))
 
 // KV represents a key-value pair
 type KV struct {
-	Key string
-	Val any
+	Key   string
+	Value any
 }
 
 // Twig is a uniform element of a QP-Trie (meaning either a node or a leaf).
@@ -57,7 +57,7 @@ func New(init ...KV) *Twig {
 	qp := newFanNode(0, nibSizeMax, 0, 0)
 
 	for _, kv := range init {
-		qp.Set(kv.Key, kv.Val)
+		qp.Set(kv.Key, kv.Value)
 	}
 
 	return qp
@@ -83,7 +83,21 @@ func (twig *Twig) Shift() int {
 	return int(twig.bitpack & nibShiftMask >> nibShiftOffset)
 }
 
-func (twig *Twig) Bitmap() (uint64, int) {
+func (twig *Twig) FanNibbleSize() int {
+	return int(twig.bitpack & nibSizeMask >> nibSizeOffset)
+}
+
+func (twig *Twig) FanPrefix() (uint64, int) {
+	var (
+		size   = int(twig.bitpack & pfxSizeMask >> pfxSizeOffset)
+		offset = pfxSizeOffset - size
+		mask   = uint64(1)<<size - 1
+		prefix = (twig.bitpack >> offset) & mask
+	)
+	return prefix, size
+}
+
+func (twig *Twig) FanBitmap() (uint64, int) {
 	nibSize := twig.bitpack & nibSizeMask >> nibSizeOffset
 	bmpSize := 1<<nibSize + 1
 	bmpMask := uint64(1<<bmpSize) - 1
@@ -133,7 +147,7 @@ func (twig *Twig) String() string {
 		b.WriteString("|" + strconv.FormatUint(nibLen, 10) + "bit")
 
 		var (
-			bitmap, size = twig.Bitmap()
+			bitmap, size = twig.FanBitmap()
 			format       = "|bmp:%0" + strconv.Itoa(size) + "b"
 		)
 
@@ -148,7 +162,7 @@ func (twig *Twig) String() string {
 // Get returns a value associated with the given key.
 func (twig *Twig) Get(key string) (any, bool) {
 	if closest, _, ok := findClosest(twig, key); ok {
-		return getLeafKV(closest).Val, true
+		return getLeafKV(closest).Value, true
 	}
 
 	return nil, false

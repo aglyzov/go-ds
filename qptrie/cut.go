@@ -324,7 +324,7 @@ func getCutNodeKey(node *Twig) string {
 
 func getCutNodeTwig(node *Twig) *Twig {
 	if node.bitpack&embKeySizeMask == 0 {
-		return (*KV)(node.pointer).Val.(*Twig) // regular cut-node
+		return (*KV)(node.pointer).Value.(*Twig) // regular cut-node
 	}
 
 	return (*Twig)(node.pointer)

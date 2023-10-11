@@ -86,7 +86,7 @@ func addToLeaf(leaf *Twig, key string, val any) {
 	// end with two leaves
 	var (
 		leaf1  = newLeaf(key1, shift1, val)
-		leaf2  = newLeaf(key2, shift2, kv.Val)
+		leaf2  = newLeaf(key2, shift2, kv.Value)
 		leaves [2]Twig
 	)
 
@@ -116,8 +116,8 @@ func getLeafKV(leaf *Twig) KV {
 	}
 
 	return KV{
-		Key: extractKey(leaf.bitpack),
-		Val: *(*any)(leaf.pointer),
+		Key:   extractKey(leaf.bitpack),
+		Value: *(*any)(leaf.pointer),
 	}
 }
 
@@ -133,7 +133,7 @@ func setLeafValue(leaf *Twig, val any) any {
 	default:
 		// regular leaf
 		kv := (*KV)(leaf.pointer)
-		old, kv.Val = kv.Val, val
+		old, kv.Value = kv.Value, val
 	}
 
 	return old

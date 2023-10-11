@@ -2,8 +2,8 @@ package qptrie
 
 import (
 	"fmt"
+	"strings"
 	"testing"
-	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,151 +12,253 @@ import (
 func TestAddToFanNode(t *testing.T) {
 	t.Parallel()
 
+	type KV struct {
+		Key   string // bit string, e.g. "1100_1100_00011110" (left-to-right)
+		Value any
+	}
+	type Query struct {
+		Key   string // bit string, e.g. "1100_1100_00011110" (left-to-right)
+		OK    bool
+		Value any
+	}
+
 	for _, tcase := range []*struct {
-		Shift      int
-		PfxSize    int
-		NibSize    int
-		Pfx        uint64
-		Key1, Key2 string
+		Desc      string
+		Shift     int
+		PfxSize   int
+		NibSize   int
+		Prefix    uint64
+		KeyValues []*KV
+
 		ExpShift   int
 		ExpPfxSize int
 		ExpNibSize int
-		ExpPfx     uint64
+		ExpPrefix  uint64
 		ExpBitmap  uint64
+		Queries    []*Query
 	}{
 		{
+			Desc:  "empty nibble",
+			Shift: 0, PfxSize: 0, NibSize: 2,
+			Prefix: 0b0,
+			KeyValues: []*KV{
+				{"", "A"},
+				{"01_011010", "B"},
+			},
+			ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 2, ExpPrefix: 0b0,
+			ExpBitmap: 0b10000 | (uint64(1) << 0b10),
+			Queries: []*Query{
+				{"", true, "A"},
+				{"01_011010", true, "B"},
+			},
+		},
+		{
+			Desc:  "TODO",
+			Shift: 0, PfxSize: 0, NibSize: 3,
+			Prefix: 0b0,
+			KeyValues: []*KV{
+				{"110_11101", "A"},
+				{"011_11010", "B"},
+			},
+			ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 3, ExpPrefix: 0b0,
+			ExpBitmap: (uint64(1) << 0b011) | (uint64(1) << 0b110),
+			Queries: []*Query{
+				{"", false, ""},
+				{"110_11101", true, "A"},
+				{"011_11010", true, "B"},
+			},
+		},
+		{
+			Desc:  "TODO",
 			Shift: 0, PfxSize: 0, NibSize: 5,
-			Pfx:      0b0,
-			Key1:     "11100_11110001000",
-			Key2:     "01100_110",
-			ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 5, ExpPfx: 0b0,
-			ExpBitmap: uint64(1)<<32 | (uint64(1) << 0b00111) | (uint64(1) << 0b00110),
+			Prefix: 0b0,
+			KeyValues: []*KV{
+				{"11100_11110001000", "A"},
+				{"01100_110", "B"},
+			},
+			ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 5, ExpPrefix: 0b0,
+			ExpBitmap: (uint64(1) << 0b00111) | (uint64(1) << 0b00110),
+			Queries: []*Query{
+				{"", false, ""},
+				{"11100_11110001000", true, "A"},
+				{"01100_110", true, "B"},
+			},
 		},
 		{
+			Desc:  "TODO",
 			Shift: 5, PfxSize: 0, NibSize: 5,
-			Pfx:      0b0,
-			Key1:     "11100_11110_001000",
-			Key2:     "01100_110",
-			ExpShift: 5, ExpPfxSize: 0, ExpNibSize: 5, ExpPfx: 0b0,
-			ExpBitmap: uint64(1)<<32 | (uint64(1) << 0b01111) | (uint64(1) << 0b00011),
+			Prefix: 0b0,
+			KeyValues: []*KV{
+				{"11100_11110_001000", "A"},
+				{"01100_110", "B"},
+			},
+			ExpShift: 5, ExpPfxSize: 0, ExpNibSize: 5, ExpPrefix: 0b0,
+			ExpBitmap: (uint64(1) << 0b01111) | (uint64(1) << 0b00011),
+			Queries: []*Query{
+				{"", false, ""},
+				{"11100_11110_001000", true, "A"},
+				{"01100_110", true, "B"},
+			},
 		},
 		{
+			Desc:  "TODO",
 			Shift: 0, PfxSize: 3, NibSize: 4,
-			Pfx:      0b_110,
-			Key1:     "011_0011_110001000",
-			Key2:     "011_1011_0",
-			ExpShift: 0, ExpPfxSize: 3, ExpNibSize: 4, ExpPfx: 0b110,
-			ExpBitmap: uint64(1)<<16 | (uint64(1) << 0b1100) | (uint64(1) << 0b1101),
+			Prefix: 0b_110,
+			KeyValues: []*KV{
+				{"011_0011_110001000", "A"},
+				{"011_1011_0", "B"},
+			},
+			ExpShift: 0, ExpPfxSize: 3, ExpNibSize: 4, ExpPrefix: 0b110,
+			ExpBitmap: (uint64(1) << 0b1100) | (uint64(1) << 0b1101),
+			Queries: []*Query{
+				{"", false, ""},
+				{"011_0011_110001000", true, "A"},
+				{"011_1011_0", true, "B"},
+			},
 		},
 		{
+			Desc:  "TODO",
 			Shift: 4, PfxSize: 4, NibSize: 3,
-			Pfx:      0b_1101,
-			Key1:     "0110_1011_101_11000",
-			Key2:     "0111_1011",
-			ExpShift: 4, ExpPfxSize: 4, ExpNibSize: 3, ExpPfx: 0b1101,
+			Prefix: 0b_1101,
+			KeyValues: []*KV{
+				{"0110_1011_101_11000", "A"},
+				{"0111_1011", "B"},
+			},
+			ExpShift: 4, ExpPfxSize: 4, ExpNibSize: 3, ExpPrefix: 0b1101,
 			ExpBitmap: uint64(0b100000000) | (uint64(1) << 0b101),
+			Queries: []*Query{
+				{"", false, ""},
+				{"0110_1011_101_11000", true, "A"},
+				{"0111_1011", true, "B"},
+			},
 		},
 		{
+			Desc:  "TODO",
 			Shift: 0, PfxSize: 3, NibSize: 3,
-			Pfx:      0b_110,
-			Key1:     "011_001_1110001000",
-			Key2:     "001_101_10",
-			ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 3, ExpPfx: 0b0,
+			Prefix: 0b_110,
+			KeyValues: []*KV{
+				{"011_001_1110001000", "A"},
+				{"001_101_10", "B"},
+			},
+			ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 3, ExpPrefix: 0b0,
 			ExpBitmap: (uint64(1) << 0b110) | (uint64(1) << 0b100),
+			Queries: []*Query{
+				{"", false, ""},
+				{"011_001_1110001000", true, "A"},
+				{"001_101_10", true, "B"},
+			},
 		},
 		{
+			Desc:  "TODO",
 			Shift: 0, PfxSize: 7, NibSize: 2,
-			Pfx:      0b_1111101,
-			Key1:     "1011111_01_1001000",
-			Key2:     "1011110_10_0110111",
-			ExpShift: 0, ExpPfxSize: 2, ExpNibSize: 5, ExpPfx: 0b01,
+			Prefix: 0b_1111101,
+			KeyValues: []*KV{
+				{"1011111_01_1001000", "A"},
+				{"1011110_10_0110111", "B"},
+			},
+			ExpShift: 0, ExpPfxSize: 2, ExpNibSize: 5, ExpPrefix: 0b01,
 			ExpBitmap: (uint64(1) << 0b11111) | (uint64(1) << 0b01111),
+			Queries: []*Query{
+				{"", false, ""},
+				{"1011111_01_1001000", true, "A"},
+				{"1011110_10_0110111", true, "B"},
+			},
 		},
 		{
+			Desc:  "TODO",
 			Shift: 6, PfxSize: 4, NibSize: 4,
-			Pfx:      0b_1111,
-			Key1:     "010011_1111_0011_10",
-			Key2:     "001011_11",
-			ExpShift: 6, ExpPfxSize: 0, ExpNibSize: 4, ExpPfx: 0,
+			Prefix: 0b_1111,
+			KeyValues: []*KV{
+				{"010011_1111_0011_10", "A"},
+				{"010011_11", "B"},
+			},
+			ExpShift: 6, ExpPfxSize: 0, ExpNibSize: 4, ExpPrefix: 0,
 			ExpBitmap: (uint64(1) << 0b1111) | (uint64(1) << 0b0011),
+			Queries: []*Query{
+				{"", false, ""},
+				{"010011_1111_0011_10", true, "A"},
+				{"010011_11", true, "B"},
+			},
 		},
 		// TODO: add a test case where the second key is smaller than a prefix
-		/* TODO: add support for Cut (?)
-		{
-			Shift: 3, PfxSize: 6, NibSize: 4,
-			Pfx:      0b_001101,
-			Key1:     "010_101100_1001_110",
-			Key2:     "010_10110",
-			ExpShift: 3, ExpPfxSize: 0, ExpNibSize: 5, ExpPfx: 0,
-			ExpBitmap: (uint64(1) << 0b01101) | (uint64(1) << 0b0011),
-		},
+		// TODO: add support for Cut (?)
+		/*
+			{
+				Shift: 3, PfxSize: 6, NibSize: 4,
+				Prefix:      0b_001101,
+				KeyValues:     []*KV{
+					{"010_101100_1001_110", "A"},
+				    {"010_10110", "B"},
+				},
+				ExpShift: 3, ExpPfxSize: 0, ExpNibSize: 5, ExpPrefix: 0,
+				ExpBitmap: (uint64(1) << 0b01101) | (uint64(1) << 0b0011),
+				Queries: []*Query{
+				},
+			},
 		*/
 		// TODO: add a test case where the second key is smaller than a nib and the first key
 		//       continues with zeros
 		/*
 		 */
 	} {
+		var (
+			tcase = tcase
+			keys  []string
+		)
+
+		for _, kv := range tcase.KeyValues {
+			keys = append(keys, kv.Key)
+		}
+
 		name := fmt.Sprintf(
-			"shift:%v, prefix:%v, nib:%v, key1:%v, key2:%v",
-			tcase.Shift, tcase.PfxSize, tcase.NibSize, tcase.Key1, tcase.Key2,
+			"[%v] shift:%v, prefix:%v, nib:%v, keys:[%v]",
+			tcase.Desc, tcase.Shift, tcase.PfxSize, tcase.NibSize, strings.Join(keys, ","),
 		)
 
 		t.Run(name, func(t *testing.T) {
-			var (
-				bitmapWidth = (uint64(1) << tcase.NibSize) + 1 // one extra bit to encode an empty key
-				emptyBit    = uint64(1) << (bitmapWidth - 1)
-			)
+			node := newFanNode(tcase.Shift, tcase.NibSize, tcase.PfxSize, tcase.Prefix)
 
-			node := newFanNode(tcase.Shift, tcase.NibSize, tcase.PfxSize, tcase.Pfx)
+			for _, kv := range tcase.KeyValues {
+				key, err := bitStringToString(kv.Key)
+				require.NoError(t, err)
 
-			node.bitpack |= emptyBit
-			node.pointer = unsafe.Pointer(newLeaf("", 0, "empty"))
+				addToFanNode(node, key, kv.Value, false)
 
-			var (
-				key1, _ = bitStringToString(tcase.Key1)
-				key2, _ = bitStringToString(tcase.Key2)
-			)
+				t.Logf("[+] set %v = %v: %v", kv.Key, kv.Value, node)
 
-			require.Zero(t, node.bitpack&leafBitMask, "should be a fan-node, not leaf")
-
-			addToFanNode(node, key1, "one", true)
-			fmt.Println(">>>", node)
-			addToFanNode(node, key2, "two", true)
-
-			fmt.Println(">>>", node)
-
-			require.Zero(t, node.bitpack&leafBitMask, "should be a fan-node, not leaf")
+				require.True(t, node.IsFanNode())
+			}
 
 			var (
-				actShift       = int(node.bitpack&nibShiftMask) >> nibShiftOffset
-				actPfxSize     = int(node.bitpack&pfxSizeMask) >> pfxSizeOffset
-				actNibSize     = int(node.bitpack&nibSizeMask) >> nibSizeOffset
-				actPfxOffset   = pfxSizeOffset - actPfxSize
-				actPfxMask     = uint64(1)<<actPfxSize - 1
-				actPfx         = (node.bitpack >> actPfxOffset) & actPfxMask
-				actBitmapWidth = uint64(1)<<actNibSize + 1 // one extra bit to encode an empty key
-				actBitmapMask  = uint64(1)<<actBitmapWidth - 1
+				actPrefix, actPfxSize = node.FanPrefix()
+				actBitmap, _          = node.FanBitmap()
 			)
 
-			require.Equal(t, tcase.ExpShift, actShift)
+			require.Equal(t, tcase.ExpShift, node.Shift())
+			require.Equal(t, tcase.ExpNibSize, node.FanNibbleSize())
 			require.Equal(t, tcase.ExpPfxSize, actPfxSize)
-			require.Equal(t, tcase.ExpNibSize, actNibSize)
-			require.Equal(t, tcase.ExpPfx, actPfx)
+			require.Equal(t, tcase.ExpPrefix, actPrefix)
 
-			assert.Equal(t, tcase.ExpBitmap, node.bitpack&actBitmapMask)
+			assert.Equal(t, tcase.ExpBitmap, actBitmap)
 
-			// check if both keys lead to the respective values
-			twig1, _, ok := findClosest(node, key1)
-			fmt.Println(">>>", twig1)
-			require.True(t, twig1.bitpack&leafBitMask != 0)
-			assert.True(t, ok)
-			assert.Equal(t, "one", getLeafKV(twig1).Val)
+			// check if all keys lead to the expected values
+			for _, query := range tcase.Queries {
+				key, err := bitStringToString(query.Key)
 
-			twig2, _, ok := findClosest(node, key2)
-			fmt.Println(">>>", twig2)
-			require.True(t, twig2.bitpack&leafBitMask != 0)
-			assert.True(t, ok)
-			assert.Equal(t, "two", getLeafKV(twig2).Val)
+				assert.NoError(t, err)
+
+				twig, _, ok := findClosest(node, key)
+
+				t.Logf("[=] queried %v: %v, %v", query.Key, ok, twig)
+
+				assert.Equal(t, query.OK, ok)
+
+				if ok {
+					if assert.True(t, twig.IsLeaf()) {
+						assert.Equal(t, query.Value, getLeafKV(twig).Value)
+					}
+				}
+			}
 		})
 	}
 }

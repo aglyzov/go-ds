@@ -133,12 +133,12 @@ func TestAddToLeaf(t *testing.T) {
 			twig1, _, ok := findClosest(twig, key1)
 			require.True(t, twig1.bitpack&leafBitMask != 0)
 			assert.True(t, ok)
-			assert.Equal(t, "one", getLeafKV(twig1).Val)
+			assert.Equal(t, "one", getLeafKV(twig1).Value)
 
 			twig2, _, ok := findClosest(twig, key2)
 			require.True(t, twig2.bitpack&leafBitMask != 0)
 			assert.True(t, ok)
-			assert.Equal(t, "two", getLeafKV(twig2).Val)
+			assert.Equal(t, "two", getLeafKV(twig2).Value)
 		})
 	}
 }
