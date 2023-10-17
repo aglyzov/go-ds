@@ -38,7 +38,21 @@ func TestAddToFanNode(t *testing.T) {
 		Queries    []*Query
 	}{
 		{
-			Desc:  "empty nibble",
+			Desc:  "single empty key",
+			Shift: 0, PfxSize: 0, NibSize: 2,
+			Prefix: 0b0,
+			KeyValues: []*KV{
+				{"", "A"},
+			},
+			ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 2, ExpPrefix: 0b0,
+			ExpBitmap: 0b10000,
+			Queries: []*Query{
+				{"", true, "A"},
+				{"01_011010", false, ""},
+			},
+		},
+		{
+			Desc:  "two keys, one is empty",
 			Shift: 0, PfxSize: 0, NibSize: 2,
 			Prefix: 0b0,
 			KeyValues: []*KV{
@@ -50,10 +64,11 @@ func TestAddToFanNode(t *testing.T) {
 			Queries: []*Query{
 				{"", true, "A"},
 				{"01_011010", true, "B"},
+				{"01_011011", false, ""},
 			},
 		},
 		{
-			Desc:  "TODO",
+			Desc:  "two 1B keys, different nibbles",
 			Shift: 0, PfxSize: 0, NibSize: 3,
 			Prefix: 0b0,
 			KeyValues: []*KV{
@@ -66,10 +81,11 @@ func TestAddToFanNode(t *testing.T) {
 				{"", false, ""},
 				{"110_11101", true, "A"},
 				{"011_11010", true, "B"},
+				{"011_11011", false, ""},
 			},
 		},
 		{
-			Desc:  "TODO",
+			Desc:  "2B and 1B keys, different nibbles",
 			Shift: 0, PfxSize: 0, NibSize: 5,
 			Prefix: 0b0,
 			KeyValues: []*KV{
@@ -82,26 +98,28 @@ func TestAddToFanNode(t *testing.T) {
 				{"", false, ""},
 				{"11100_11110001000", true, "A"},
 				{"01100_110", true, "B"},
+				{"01100_111", false, ""},
 			},
 		},
 		{
-			Desc:  "TODO",
+			Desc:  "shifted 2B and 1B keys, one nibble is padded",
 			Shift: 5, PfxSize: 0, NibSize: 5,
 			Prefix: 0b0,
 			KeyValues: []*KV{
 				{"11100_11110_001000", "A"},
-				{"01100_110", "B"},
+				{"11100_110", "B"},
 			},
 			ExpShift: 5, ExpPfxSize: 0, ExpNibSize: 5, ExpPrefix: 0b0,
 			ExpBitmap: (uint64(1) << 0b01111) | (uint64(1) << 0b00011),
 			Queries: []*Query{
 				{"", false, ""},
 				{"11100_11110_001000", true, "A"},
-				{"01100_110", true, "B"},
+				{"11100_110", true, "B"},
+				{"11100_111", false, ""},
 			},
 		},
 		{
-			Desc:  "TODO",
+			Desc:  "same prefix, different nibbles",
 			Shift: 0, PfxSize: 3, NibSize: 4,
 			Prefix: 0b_110,
 			KeyValues: []*KV{
@@ -117,11 +135,11 @@ func TestAddToFanNode(t *testing.T) {
 			},
 		},
 		{
-			Desc:  "TODO",
+			Desc:  "shifted 2B and 1B keys, same prefix, one nibble is empty",
 			Shift: 4, PfxSize: 4, NibSize: 3,
 			Prefix: 0b_1101,
 			KeyValues: []*KV{
-				{"0110_1011_101_11000", "A"},
+				{"0111_1011_101_11000", "A"},
 				{"0111_1011", "B"},
 			},
 			ExpShift: 4, ExpPfxSize: 4, ExpNibSize: 3, ExpPrefix: 0b1101,
@@ -133,7 +151,7 @@ func TestAddToFanNode(t *testing.T) {
 			},
 		},
 		{
-			Desc:  "TODO",
+			Desc:  "2B and 1B keys, different prefixes",
 			Shift: 0, PfxSize: 3, NibSize: 3,
 			Prefix: 0b_110,
 			KeyValues: []*KV{
@@ -149,7 +167,7 @@ func TestAddToFanNode(t *testing.T) {
 			},
 		},
 		{
-			Desc:  "TODO",
+			Desc:  "two 2B keys, different prefixes",
 			Shift: 0, PfxSize: 7, NibSize: 2,
 			Prefix: 0b_1111101,
 			KeyValues: []*KV{
@@ -165,15 +183,15 @@ func TestAddToFanNode(t *testing.T) {
 			},
 		},
 		{
-			Desc:  "TODO",
+			Desc:  "shifted 2B and 1B keys, different prefixes, one prefix is padded",
 			Shift: 6, PfxSize: 4, NibSize: 4,
 			Prefix: 0b_1111,
 			KeyValues: []*KV{
 				{"010011_1111_0011_10", "A"},
 				{"010011_11", "B"},
 			},
-			ExpShift: 6, ExpPfxSize: 0, ExpNibSize: 4, ExpPrefix: 0,
-			ExpBitmap: (uint64(1) << 0b1111) | (uint64(1) << 0b0011),
+			ExpShift: 6, ExpPfxSize: 0, ExpNibSize: 2, ExpPrefix: 0,
+			ExpBitmap: (uint64(1) << 0b11),
 			Queries: []*Query{
 				{"", false, ""},
 				{"010011_1111_0011_10", true, "A"},
@@ -182,20 +200,22 @@ func TestAddToFanNode(t *testing.T) {
 		},
 		// TODO: add a test case where the second key is smaller than a prefix
 		// TODO: add support for Cut (?)
-		/*
-			{
-				Shift: 3, PfxSize: 6, NibSize: 4,
-				Prefix:      0b_001101,
-				KeyValues:     []*KV{
-					{"010_101100_1001_110", "A"},
-				    {"010_10110", "B"},
-				},
-				ExpShift: 3, ExpPfxSize: 0, ExpNibSize: 5, ExpPrefix: 0,
-				ExpBitmap: (uint64(1) << 0b01101) | (uint64(1) << 0b0011),
-				Queries: []*Query{
-				},
+		{
+			Desc:  "shifted 2B and 1B keys, same prefixes, one prefix is padded",
+			Shift: 3, PfxSize: 6, NibSize: 4,
+			Prefix: 0b_001101,
+			KeyValues: []*KV{
+				{"010_101100_1001_110", "A"},
+				{"010_10110", "B"},
 			},
-		*/
+			ExpShift: 3, ExpPfxSize: 0, ExpNibSize: 5, ExpPrefix: 0,
+			ExpBitmap: (uint64(1) << 0b01101),
+			Queries: []*Query{
+				{"", false, ""},
+				{"010_101100_1001_110", true, "A"},
+				{"010_10110", true, "B"},
+			},
+		},
 		// TODO: add a test case where the second key is smaller than a nib and the first key
 		//       continues with zeros
 		/*
