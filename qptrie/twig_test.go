@@ -23,6 +23,75 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, unsetPtr, qp.pointer)
 }
 
+func TestFanPrefixSize(t *testing.T) {
+	t.Parallel()
+
+	for _, tcase := range []*struct {
+		Twig     *Twig
+		Expected int
+	}{
+		{newFanNode(7, 1, 0, 0), 0},
+		{newFanNode(1, 2, 1, 0), 1},
+		{newFanNode(0, 3, 13, 0), 13},
+		{newFanNode(5, 4, 28, 0), 28},
+		{newFanNode(2, 5, 15, 0), 15},
+	} {
+		tcase := tcase
+
+		t.Run(strconv.Itoa(tcase.Expected)+"bit prefix", func(t *testing.T) {
+			actual := tcase.Twig.FanPrefixSize()
+
+			assert.Equal(t, tcase.Expected, actual)
+		})
+	}
+}
+
+func TestFanPrefixMax(t *testing.T) {
+	t.Parallel()
+
+	for _, tcase := range []*struct {
+		Twig     *Twig
+		Expected int
+	}{
+		{newFanNode(7, 1, 0, 0), 47},
+		{newFanNode(1, 2, 1, 0), 45},
+		{newFanNode(0, 3, 12, 0), 41},
+		{newFanNode(5, 4, 0, 0), 33},
+		{newFanNode(2, 5, 16, 0), 17},
+	} {
+		tcase := tcase
+
+		t.Run(strconv.Itoa(tcase.Twig.FanNibbleSize())+"bit nibble", func(t *testing.T) {
+			actual := tcase.Twig.FanPrefixMax()
+
+			assert.Equal(t, tcase.Expected, actual)
+		})
+	}
+}
+
+func TestFanBitmapSize(t *testing.T) {
+	t.Parallel()
+
+	for _, tcase := range []*struct {
+		Twig     *Twig
+		Expected int
+	}{
+		{newFanNode(7, 1, 0, 0), 3},
+		{newFanNode(1, 2, 1, 0), 5},
+		{newFanNode(0, 3, 12, 0), 9},
+		{newFanNode(5, 4, 0, 0), 17},
+		{newFanNode(2, 5, 16, 0), 33},
+	} {
+		tcase := tcase
+
+		t.Run(strconv.Itoa(tcase.Twig.FanNibbleSize())+"bit nibble", func(t *testing.T) {
+			actual := tcase.Twig.FanBitmapSize()
+
+			assert.Equal(t, tcase.Expected, actual)
+		})
+	}
+}
+
 func TestString(t *testing.T) {
 	t.Parallel()
 

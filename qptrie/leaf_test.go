@@ -20,12 +20,13 @@ func TestAddToLeaf(t *testing.T) {
 		Name       string
 		Shift      int
 		Key1, Key2 string
+
 		ExpType    byte
 		ExpShift   int
 		ExpCut     string
 		ExpPfxSize int
 		ExpNibSize int
-		ExpPfx     uint32
+		ExpPfx     uint64
 		ExpBitmap  uint64
 	}{
 		{
@@ -92,7 +93,7 @@ func TestAddToLeaf(t *testing.T) {
 
 			twig := newLeaf(key1, tcase.Shift, "one")
 
-			require.NotZero(t, twig.bitpack&leafBitMask, "should be a leaf, not a node")
+			require.True(t, twig.IsLeaf(), "should be a leaf, not a node")
 
 			addToLeaf(twig, key2, "two")
 
@@ -102,23 +103,16 @@ func TestAddToLeaf(t *testing.T) {
 
 			switch twigType {
 			case typeFanNode:
-				var (
-					actShift       = int(twig.bitpack&nibShiftMask) >> nibShiftOffset
-					actPfxSize     = int(twig.bitpack&pfxSizeMask) >> pfxSizeOffset
-					actNibSize     = int(twig.bitpack&nibSizeMask) >> nibSizeOffset
-					actPfxOffset   = pfxSizeOffset - actPfxSize
-					actPfxMask     = (uint32(1) << actPfxSize) - 1
-					actPfx         = uint32(twig.bitpack>>actPfxOffset) & actPfxMask
-					actBitmapWidth = (uint64(1) << actNibSize) + 1 // one extra bit to encode an empty key
-					actBitmapMask  = (uint64(1) << actBitmapWidth) - 1
-				)
+				actPrefix, actPfxSize := twig.FanPrefix()
 
-				require.Equal(t, tcase.ExpShift, actShift)
+				require.Equal(t, tcase.ExpShift, twig.Shift())
+				require.Equal(t, tcase.ExpNibSize, twig.FanNibbleSize())
 				require.Equal(t, tcase.ExpPfxSize, actPfxSize)
-				require.Equal(t, tcase.ExpNibSize, actNibSize)
-				require.Equal(t, tcase.ExpPfx, actPfx)
+				require.Equal(t, tcase.ExpPfx, actPrefix)
 
-				assert.Equal(t, tcase.ExpBitmap, twig.bitpack&actBitmapMask)
+				bitmap, _ := twig.FanBitmap()
+
+				assert.Equal(t, tcase.ExpBitmap, bitmap)
 
 			case typeCutNode:
 				expected, _ := bitStringToString(tcase.ExpCut)
@@ -131,12 +125,12 @@ func TestAddToLeaf(t *testing.T) {
 
 			// check if both keys lead to the respective values
 			twig1, _, ok := findClosest(twig, key1)
-			require.True(t, twig1.bitpack&leafBitMask != 0)
+			require.True(t, twig1.IsLeaf())
 			assert.True(t, ok)
 			assert.Equal(t, "one", getLeafKV(twig1).Value)
 
 			twig2, _, ok := findClosest(twig, key2)
-			require.True(t, twig2.bitpack&leafBitMask != 0)
+			require.True(t, twig2.IsLeaf())
 			assert.True(t, ok)
 			assert.Equal(t, "two", getLeafKV(twig2).Value)
 		})

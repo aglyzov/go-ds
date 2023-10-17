@@ -87,19 +87,33 @@ func (twig *Twig) FanNibbleSize() int {
 	return int(twig.bitpack & nibSizeMask >> nibSizeOffset)
 }
 
+func (twig *Twig) FanPrefixSize() int {
+	return int(twig.bitpack & pfxSizeMask >> pfxSizeOffset)
+}
+
+func (twig *Twig) FanPrefixMax() int {
+	return pfxSizeOffset - twig.FanBitmapSize()
+}
+
 func (twig *Twig) FanPrefix() (uint64, int) {
 	var (
-		size   = int(twig.bitpack & pfxSizeMask >> pfxSizeOffset)
+		size   = twig.FanPrefixSize()
 		offset = pfxSizeOffset - size
 		mask   = uint64(1)<<size - 1
 		prefix = (twig.bitpack >> offset) & mask
 	)
+
 	return prefix, size
 }
 
-func (twig *Twig) FanBitmap() (uint64, int) {
+func (twig *Twig) FanBitmapSize() int {
 	nibSize := twig.bitpack & nibSizeMask >> nibSizeOffset
-	bmpSize := 1<<nibSize + 1
+
+	return 1<<nibSize + 1
+}
+
+func (twig *Twig) FanBitmap() (uint64, int) {
+	bmpSize := twig.FanBitmapSize()
 	bmpMask := uint64(1<<bmpSize) - 1
 
 	return twig.bitpack & bmpMask, bmpSize
