@@ -8,7 +8,7 @@ import (
 )
 
 func bitStringToString(bitStr string) (string, error) {
-	bitStr = strings.Replace(bitStr, "_", "", -1)
+	bitStr = strings.ReplaceAll(bitStr, "_", "")
 
 	var buf strings.Builder
 

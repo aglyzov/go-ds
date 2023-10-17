@@ -18,7 +18,7 @@
 //     [ 1:63 ] [ 1:62] [ 3:61-59 ] [           59:58-00            ]
 //     <1:leaf> <0:reg> <SSS:shift> ---------------------------------
 //
-//   - Embedding Leaf:
+//   - Embedded Leaf:
 //
 //     [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    56:55-00     ]
 //     <1:leaf> <1:emb> <SSS:shift> <NNN:emb-len> <KKK...KKK:emb-key>
@@ -49,7 +49,7 @@
 //     [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    56:55-00     ]
 //     <0:node> <1:cut> <SSS:shift> <000:not-emb> -------------------
 //
-//   - Embedding Cut-Node:
+//   - Embedded Cut-Node:
 //
 //     [ 1:63 ] [ 1:62] [ 3:61-59 ] [  3:58-56  ] [    56:55-00     ]
 //     <0:node> <1:cut> <SSS:shift> <NNN:emb-len> [KKK...KKK:emb-key]
