@@ -1,6 +1,7 @@
 package qptrie
 
 import (
+	"math"
 	"math/bits"
 	"unsafe"
 )
@@ -27,6 +28,50 @@ func newFanNode(nibShift, nibSize, pfxSize int, pfx uint64) *Twig {
 	}
 }
 
+func fanNibbleSize(fan *Twig) int {
+	return int(fan.bitpack & nibSizeMask >> nibSizeOffset)
+}
+
+func fanPrefixSize(fan *Twig) int {
+	return int(fan.bitpack & pfxSizeMask >> pfxSizeOffset)
+}
+
+func fanPrefixMax(fan *Twig) int {
+	return pfxSizeOffset - fanBitmapSize(fan)
+}
+
+func fanPrefixMaxFor(nibSize int) int {
+	return pfxSizeOffset - fanBitmapSizeFor(nibSize)
+}
+
+func fanPrefix(fan *Twig) (uint64, int) {
+	var (
+		size   = fanPrefixSize(fan)
+		offset = pfxSizeOffset - size
+		mask   = uint64(1)<<size - 1
+		prefix = (fan.bitpack >> offset) & mask
+	)
+
+	return prefix, size
+}
+
+func fanBitmapSize(fan *Twig) int {
+	nibSize := fan.bitpack & nibSizeMask >> nibSizeOffset
+
+	return 1<<nibSize + 1
+}
+
+func fanBitmapSizeFor(nibSize int) int {
+	return 1<<nibSize + 1
+}
+
+func fanBitmap(fan *Twig) (uint64, int) {
+	bmpSize := fanBitmapSize(fan)
+	bmpMask := uint64(1<<bmpSize) - 1
+
+	return fan.bitpack & bmpMask, bmpSize
+}
+
 // addToFanNode assumes either a key doesn't match the fan's prefix or a key's
 // nibble isn't set in the fan's bitmap.
 func addToFanNode(node *Twig, key string, val any, replaceEmpty bool) {
@@ -34,13 +79,13 @@ func addToFanNode(node *Twig, key string, val any, replaceEmpty bool) {
 		shift     = node.Shift()
 		prevShift = shift
 		prevKey   = key
-		pfxSize   = node.FanPrefixSize()
+		pfxSize   = fanPrefixSize(node)
 	)
 
 	if pfxSize > 0 {
 		// the fan-node has a prefix - check if it matches the key
 		var (
-			pfx, _ = node.FanPrefix()
+			pfx, _ = fanPrefix(node)
 
 			bitsAvail  = len(key)<<byteShift - shift // number of bits available in the key
 			bitsToTake = min(pfxSize, bitsAvail)
@@ -229,8 +274,8 @@ func addToFanNode(node *Twig, key string, val any, replaceEmpty bool) {
 	}
 
 	var (
-		nibSize   = node.FanNibbleSize()
-		bitmap, _ = node.FanBitmap()
+		nibSize   = fanNibbleSize(node)
+		bitmap, _ = fanBitmap(node)
 	)
 
 	if bitmap == 0 && replaceEmpty {

@@ -2,12 +2,82 @@ package qptrie
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestFanPrefixSize(t *testing.T) {
+	t.Parallel()
+
+	for _, tcase := range []*struct {
+		Twig     *Twig
+		Expected int
+	}{
+		{newFanNode(7, 1, 0, 0), 0},
+		{newFanNode(1, 2, 1, 0), 1},
+		{newFanNode(0, 3, 13, 0), 13},
+		{newFanNode(5, 4, 28, 0), 28},
+		{newFanNode(2, 5, 15, 0), 15},
+	} {
+		tcase := tcase
+
+		t.Run(strconv.Itoa(tcase.Expected)+"bit prefix", func(t *testing.T) {
+			actual := fanPrefixSize(tcase.Twig)
+
+			assert.Equal(t, tcase.Expected, actual)
+		})
+	}
+}
+
+func TestFanPrefixMax(t *testing.T) {
+	t.Parallel()
+
+	for _, tcase := range []*struct {
+		Twig     *Twig
+		Expected int
+	}{
+		{newFanNode(7, 1, 0, 0), 47},
+		{newFanNode(1, 2, 1, 0), 45},
+		{newFanNode(0, 3, 12, 0), 41},
+		{newFanNode(5, 4, 0, 0), 33},
+		{newFanNode(2, 5, 16, 0), 17},
+	} {
+		tcase := tcase
+
+		t.Run(strconv.Itoa(fanNibbleSize(tcase.Twig))+"bit nibble", func(t *testing.T) {
+			actual := fanPrefixMax(tcase.Twig)
+
+			assert.Equal(t, tcase.Expected, actual)
+		})
+	}
+}
+
+func TestFanBitmapSize(t *testing.T) {
+	t.Parallel()
+
+	for _, tcase := range []*struct {
+		Twig     *Twig
+		Expected int
+	}{
+		{newFanNode(7, 1, 0, 0), 3},
+		{newFanNode(1, 2, 1, 0), 5},
+		{newFanNode(0, 3, 12, 0), 9},
+		{newFanNode(5, 4, 0, 0), 17},
+		{newFanNode(2, 5, 16, 0), 33},
+	} {
+		tcase := tcase
+
+		t.Run(strconv.Itoa(fanNibbleSize(tcase.Twig))+"bit nibble", func(t *testing.T) {
+			actual := fanBitmapSize(tcase.Twig)
+
+			assert.Equal(t, tcase.Expected, actual)
+		})
+	}
+}
 
 func TestAddToFanNode(t *testing.T) {
 	t.Parallel()
@@ -218,8 +288,6 @@ func TestAddToFanNode(t *testing.T) {
 		},
 		// TODO: add a test case where the second key is smaller than a nib and the first key
 		//       continues with zeros
-		/*
-		 */
 	} {
 		var (
 			tcase = tcase
@@ -250,12 +318,12 @@ func TestAddToFanNode(t *testing.T) {
 			}
 
 			var (
-				actPrefix, actPfxSize = node.FanPrefix()
-				actBitmap, _          = node.FanBitmap()
+				actPrefix, actPfxSize = fanPrefix(node)
+				actBitmap, _          = fanBitmap(node)
 			)
 
 			require.Equal(t, tcase.ExpShift, node.Shift())
-			require.Equal(t, tcase.ExpNibSize, node.FanNibbleSize())
+			require.Equal(t, tcase.ExpNibSize, fanNibbleSize(node))
 			require.Equal(t, tcase.ExpPfxSize, actPfxSize)
 			require.Equal(t, tcase.ExpPrefix, actPrefix)
 

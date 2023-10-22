@@ -103,14 +103,14 @@ func TestAddToLeaf(t *testing.T) {
 
 			switch twigType {
 			case typeFanNode:
-				actPrefix, actPfxSize := twig.FanPrefix()
+				actPrefix, actPfxSize := fanPrefix(twig)
 
 				require.Equal(t, tcase.ExpShift, twig.Shift())
-				require.Equal(t, tcase.ExpNibSize, twig.FanNibbleSize())
+				require.Equal(t, tcase.ExpNibSize, fanNibbleSize(twig))
 				require.Equal(t, tcase.ExpPfxSize, actPfxSize)
 				require.Equal(t, tcase.ExpPfx, actPrefix)
 
-				bitmap, _ := twig.FanBitmap()
+				bitmap, _ := fanBitmap(twig)
 
 				assert.Equal(t, tcase.ExpBitmap, bitmap)
 
