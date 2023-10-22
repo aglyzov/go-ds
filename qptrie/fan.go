@@ -72,6 +72,56 @@ func fanBitmap(fan *Twig) (uint64, int) {
 	return fan.bitpack & bmpMask, bmpSize
 }
 
+// extendFanNibble attempts to make a Fan nibble larger taking extra bits from a prefix.
+// Returns a final nibble size.
+func extendFanNibble(fan *Twig) int {
+	nibSize := fanNibbleSize(fan)
+	nibDelta := nibSizeMax - nibSize
+	if nibDelta == 0 {
+		return nibSize
+	}
+
+	pfx, pfxSize := fanPrefix(fan)
+
+	if pfxSize == 0 {
+		return nibSize
+	}
+
+	for pfxSize-nibDelta > fanPrefixMaxFor(nibSize+nibDelta) {
+		nibDelta--
+		if nibDelta == 0 {
+			return nibSize
+		}
+	}
+
+	bitmap, bmpSize := fanBitmap(fan)
+	emptyBit := uint64(1) << (bmpSize - 1)
+
+	if fan.bitpack&emptyBit != 0 {
+		return nibSize
+	}
+
+	if pfxSize < nibDelta {
+		nibDelta = pfxSize
+	}
+
+	pfxMask := uint64(1)<<nibDelta - 1
+	pfxBits := (pfx & pfxMask) << nibSize
+
+	pfxSize -= nibDelta
+	nibSize += nibDelta
+	bmpSize = fanBitmapSizeFor(nibSize)
+
+	mask := (uint64(math.MaxUint64) << bmpSize) & ^(nibSizeMask | pfxSizeMask)
+
+	fan.bitpack = (fan.bitpack & mask) |
+		uint64(nibSize)<<nibSizeOffset |
+		uint64(pfxSize)<<pfxSizeOffset |
+		bitmap<<pfxBits
+
+	return nibSize
+}
+
 // addToFanNode assumes either a key doesn't match the fan's prefix or a key's
 // nibble isn't set in the fan's bitmap.
 func addToFanNode(node *Twig, key string, val any, replaceEmpty bool) {

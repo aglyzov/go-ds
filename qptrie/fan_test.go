@@ -79,6 +79,109 @@ func TestFanBitmapSize(t *testing.T) {
 	}
 }
 
+func TestExtendFanNibble(t *testing.T) {
+	t.Parallel()
+
+	for _, tcase := range []*struct {
+		Desc    string
+		Shift   int
+		PfxSize int
+		NibSize int
+		Prefix  uint64
+		Bitmap  uint64
+
+		ExpShift   int
+		ExpPfxSize int
+		ExpNibSize int
+		ExpPrefix  uint64
+		ExpBitmap  uint64
+	}{
+		{
+			Desc:  "no prefix",
+			Shift: 0, PfxSize: 0, NibSize: 2,
+			Prefix: 0b0, Bitmap: 0b0_0101,
+
+			ExpShift: 0, ExpPfxSize: 0, ExpNibSize: 2,
+			ExpPrefix: 0b0, ExpBitmap: 0b0_0101,
+		},
+		{
+			Desc:  "empty bit is set",
+			Shift: 4, PfxSize: 5, NibSize: 2,
+			Prefix: 0b00000, Bitmap: 0b1_0000,
+
+			ExpShift: 4, ExpPfxSize: 5, ExpNibSize: 2,
+			ExpPrefix: 0b00000, ExpBitmap: 0b1_0000,
+		},
+		{
+			Desc:  "already maxed out",
+			Shift: 6, PfxSize: 3, NibSize: 5,
+			Prefix: 0b111, Bitmap: 0b0_10000001_00011000_01000010_00001111,
+
+			ExpShift: 6, ExpPfxSize: 3, ExpNibSize: 5,
+			ExpPrefix: 0b111, ExpBitmap: 0b0_10000001_00011000_01000010_00001111,
+		},
+		{
+			Desc:  "zero prefix",
+			Shift: 1, PfxSize: 7, NibSize: 2,
+			Prefix: 0b0000000, Bitmap: 0b0_1001,
+
+			ExpShift: 1, ExpPfxSize: 4, ExpNibSize: 5,
+			ExpPrefix: 0b0000, ExpBitmap: 0b0_00000000_00000000_00000000_00001001,
+		},
+		{
+			Desc:  "non-zero prefix",
+			Shift: 1, PfxSize: 7, NibSize: 3,
+			Prefix: 0b1001011, Bitmap: 0b0_10001011,
+
+			ExpShift: 1, ExpPfxSize: 5, ExpNibSize: 5,
+			ExpPrefix: 0b10010, ExpBitmap: 0b0_10001011_00000000_00000000_00000000,
+		},
+		{
+			Desc:  "small prefix",
+			Shift: 6, PfxSize: 2, NibSize: 2,
+			Prefix: 0b10, Bitmap: 0b0_1011,
+
+			ExpShift: 6, ExpPfxSize: 0, ExpNibSize: 4,
+			ExpPrefix: 0b0, ExpBitmap: 0b0_00001011_00000000,
+		},
+		{
+			Desc:  "large prefix",
+			Shift: 7, PfxSize: 34, NibSize: 3,
+			Prefix: 0b10_11100011_01011011_00001110_01001011, Bitmap: 0b0_10011011,
+
+			ExpShift: 7, ExpPfxSize: 33, ExpNibSize: 4,
+			ExpPrefix: 0b1_01110001_10101101_10000111_00100101, ExpBitmap: 0b0_10011011_00000000,
+		},
+	} {
+		var tcase = tcase
+
+		name := fmt.Sprintf(
+			"[%v] shift:%v, prefix:%v, nib:%v, bitmap:"+fmt.Sprintf("%%0%vb", 1<<tcase.NibSize+1),
+			tcase.Desc, tcase.Shift, tcase.PfxSize, tcase.NibSize, tcase.Bitmap,
+		)
+
+		t.Run(name, func(t *testing.T) {
+			node := newFanNode(tcase.Shift, tcase.NibSize, tcase.PfxSize, tcase.Prefix)
+			node.bitpack |= tcase.Bitmap
+
+			nibSize := extendFanNibble(node)
+
+			var (
+				actPrefix, actPfxSize = fanPrefix(node)
+				actBitmap, _          = fanBitmap(node)
+			)
+
+			require.Equal(t, tcase.ExpShift, node.Shift(), "shift")
+			require.Equal(t, tcase.ExpNibSize, nibSize, "nibble size (returned)")
+			require.Equal(t, tcase.ExpNibSize, fanNibbleSize(node), "nibble size (actual)")
+			require.Equal(t, tcase.ExpPfxSize, actPfxSize, "prefix size")
+			require.Equal(t, tcase.ExpPrefix, actPrefix, "prefix")
+
+			assert.Equal(t, tcase.ExpBitmap, actBitmap, "bitmap")
+		})
+	}
+}
+
 func TestAddToFanNode(t *testing.T) {
 	t.Parallel()
 
